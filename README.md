@@ -14,7 +14,8 @@ The code in this repository is available as a Python library here on GitHub or t
 The various functions are organised in different sections, consisting of:
 
 - **RDF Data Collection**: Functions to formulate and execute a SPARQL query on an RDF/SPARQL endpoint;
-- **Data Processing**: Functions to process the output of an RDF/SPARQL endpoint (e.g. determine missing values, extract associated subclasses);
+- **Data Processing**: Functions to process the output of an RDF/SPARQL endpoint (e.g. determine missing values, extract
+  associated subclasses);
 - **Query Templates**: SPARQL query templates that the SPARQL data collection section uses
 
 # Usage
@@ -22,7 +23,8 @@ The various functions are organised in different sections, consisting of:
 The library provides functions that can be included in a Vantage6 algorithm as the algorithm developer sees fit.
 The functions are designed to be modular and can be used independently or in combination with other functions.
 
-The library can be included in your Vantage6 algorithm by listing it in the `requirements.txt` and `setup.py` file of your
+The library can be included in your Vantage6 algorithm by listing it in the `requirements.txt` and `setup.py` file of
+your
 algorithm.
 
 ## Including the library in your Vantage6 algorithm
@@ -30,10 +32,16 @@ algorithm.
 For the `requirements.txt` file, you can add the following line to the file:
 
 ```
-git+https://github.com/STRONGAYA/v6-tools-rdf.git@v0.1.0
+git+https://github.com/STRONGAYA/v6-tools-rdf.git@v0.1.1
 ```
 
 For the `setup.py` file, you can add the following line to the `install_requires` list:
+
+```python
+        "vantage6-strongaya-rdf @ git+https://github.com/STRONGAYA/v6-tools-rdf.git@v0.1.1",
+```
+
+The algorithm's `setup.py`, particularly the `install_requirements`, section file should then look something like this:
 
 ```python
 from os import path
@@ -57,17 +65,16 @@ setup(
         'vantage6-algorithm-tools',
         'numpy',
         'pandas',
-        "vantage6-strongaya-rdf @ git+https://github.com/STRONGAYA/v6-tools-rdf.git@v0.1.0",
-    # other dependencies
+        "vantage6-strongaya-rdf @ git+https://github.com/STRONGAYA/v6-tools-rdf.git@v0.1.1"
+        # other dependencies
     ]
 )
 ```
 
 ## Central (aggregating) example
 
-The functions included in this library focus on extracting RDF data from a SPARQL endpoint. 
+The functions included in this library focus on extracting RDF data from a SPARQL endpoint.
 It is not recommended to use these functions in the central (aggregating) section of a Vantage6 algorithm.
-
 
 ## Node or local (participating) example
 
@@ -92,14 +99,14 @@ def partial_general_statistics(variables_to_analyse: dict) -> dict:
     safe_log("info", "Executing partial algorithm for some modelling using RDF data.")
 
     # Set datatypes for each variable
-    df = collect_sparql_data(variables_to_analyse, query_type="single_column", 
+    df = collect_sparql_data(variables_to_analyse, query_type="single_column",
                              endpoint="http://localhost:7200/repositories/userRepo",
                              )
 
     # Ensure that the desired privacy measures are applied
 
     # Do some modelling of the data
-    
+
     return result
 ```
 

@@ -32,7 +32,7 @@ def _load_query_template(query_name: str) -> str:
         str: The SPARQL query template.
     """
     try:
-        with resources.files('vantage6_strongaya_rdf').joinpath(f'query_templates').joinpath(f'{query_name}').open(
+        with resources.files('vantage6_strongaya_rdf').joinpath(f'query_templates').joinpath(f'{query_name}.rq').open(
                 'r') as file:
             return file.read()
     except Exception as e:
