@@ -26,7 +26,7 @@ dependencies = [
     "pandas>=2.2.3",
     "vantage6-algorithm-tools>=3.6.0",
     "requests",
-    "vantage6-strongaya-general @ git+https://github.com/STRONGAYA/v6-tools-general.git@v0.1.3"
+    "vantage6-strongaya-general @ git+https://github.com/STRONGAYA/v6-tools-general.git@v1.0.0"
 ]
 
 [project.urls]
