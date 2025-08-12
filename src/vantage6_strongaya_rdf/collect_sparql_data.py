@@ -100,7 +100,7 @@ def collect_sparql_data(variables_to_describe: List[str], query_type: str = 'sin
     missing_data_notation = get_env_var("MISSING_DATA_NOTATION", missing_data_notation)
 
     if query_type == 'single_column':
-        query_template = _load_query_template('retrieve_column.rq')
+        query_template = _load_query_template('single_column')
     else:
         safe_log("error", f"Unknown query type: {query_type}.")
         return pd.DataFrame(columns=variables_to_describe)
@@ -119,7 +119,7 @@ def collect_sparql_data(variables_to_describe: List[str], query_type: str = 'sin
             safe_log("error", f"Error processing {variable}: {e}")
             continue
 
-    add_missing_data_info(intermediate_df, missing_data_notation)
+    # add_missing_data_info(intermediate_df, missing_data_notation)
     intermediate_df = intermediate_df.replace(missing_data_notation, pd.NA)
 
     return intermediate_df if not intermediate_df.empty else pd.DataFrame(columns=variables_to_describe)

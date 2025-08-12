@@ -6,4 +6,4 @@ from .collect_sparql_data import (
     collect_sparql_data
 )
 
-__version__ = "0.1.1"
+__version__ = "0.1.2"
