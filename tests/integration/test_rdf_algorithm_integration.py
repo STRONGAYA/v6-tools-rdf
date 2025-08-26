@@ -72,7 +72,7 @@ def test_methods():
 
 
 @pytest.fixture
-def test_configurations():
+def test_configurations(rdf_store):
     """
     Fixture providing comprehensive test configurations for algorithm validation.
 
@@ -110,17 +110,19 @@ def test_configurations():
         "standard_dataset": {
             "database_label": "rdf_store",  # Always use rdf_store as this refers to the RDF-store setup
             "variables_to_extract": ["Variable_1", "Variable_2"],
+            "rdf_endpoint": rdf_store["endpoint"],  # Use actual RDF-store endpoint
         },
         "standard_dataset_bad_actor": {
             "database_label": "rdf_store",  # Always use rdf_store as this refers to the RDF-store setup
             "variables_to_extract": [
                 "Variable_1",
-                "# TODO add some injection into the SPARQL query to emulate a bad actor",
+                "# TODO implement SQL injection protection for SPARQL queries",
             ],
             "expected_failure": True,
             "failure_reason": "Too narrow scope of data stratification parameters "
             "resulting in sample size threshold issues.",
             "expected_error_type": [CollectResultsError, PrivacyThresholdViolation],
+            "rdf_endpoint": rdf_store["endpoint"],
         },
         "standard_dataset_incorrect_input": {
             "database_label": "rdf_store",  # Always use rdf_store as this refers to the RDF-store setup
@@ -131,6 +133,7 @@ def test_configurations():
             "expected_failure": True,
             "failure_reason": "Non-existent variables requested or invalid input structure specified",
             "expected_error_type": [CollectResultsError, UserInputError],
+            "rdf_endpoint": rdf_store["endpoint"],
         },
         "non_existent_dataset_standard_input": {
             "database_label": "not_my_rdf_store",  # Use a non-existent database
@@ -138,6 +141,7 @@ def test_configurations():
             "expected_failure": True,
             "failure_reason": "Attempting to query an unknown database",
             "expected_error_type": [CollectResultsError, JSONDecodeError],
+            "rdf_endpoint": "http://localhost:7200/repositories/non-existent",  # Non-existent endpoint
         },
     }
 
