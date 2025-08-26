@@ -1,0 +1,152 @@
+name: Test Suite
+
+on:
+  push:
+    branches: [ main ]
+  pull_request:
+    branches: [ main ]
+
+permissions:
+  contents: write
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    strategy:
+      matrix:
+        python-version: [ "3.10" ]
+        vantage6-version: [ "4.12" ]
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python ${{ matrix.python-version }}
+        uses: actions/setup-python@v4
+        with:
+          python-version: ${{ matrix.python-version }}
+
+      - name: Cache dependencies
+        uses: actions/cache@v3
+        with:
+          path: ~/.cache/pip
+          key: ${{ runner.os }}-pip-${{ hashFiles('**/requirements.txt') }}
+          restore-keys: |
+            ${{ runner.os }}-pip-
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install pytest pytest-cov pytest-mock docker
+          pip install vantage6==${{ matrix.vantage6-version }}
+          pip install -r requirements.txt
+
+      - name: Run tests with coverage
+        run: |
+          pytest --cov=v6_descriptive_statistics --cov-report=term-missing --cov-report=html --cov-report=json
+
+      - name: Extract coverage percentage and create badge
+        run: |
+          COVERAGE=$(python -c "import json; print(json.load(open('coverage.json'))['totals']['percent_covered_display'])")
+          echo "::notice title=Coverage Percentage::Coverage: $COVERAGE%"
+          echo "COVERAGE_PERCENTAGE=$COVERAGE" >> $GITHUB_ENV
+          
+          # Determine color based on coverage
+          if (( $(echo "$COVERAGE >= 80" | bc -l) )); then
+            COLOR="brightgreen"
+          elif (( $(echo "$COVERAGE >= 60" | bc -l) )); then
+            COLOR="yellow"  
+          elif (( $(echo "$COVERAGE >= 40" | bc -l) )); then
+            COLOR="orange"
+          else
+            COLOR="red"
+          fi
+          
+          curl -o tests/coverage-badge.svg "https://img.shields.io/badge/coverage-$COVERAGE%25-$COLOR"
+
+      - name: Commit coverage badge
+        if: github.ref == 'refs/heads/main'
+        run: |
+          git config --global user.email "github-actions[bot]@users.noreply.github.com"
+          git config --global user.name "github-actions[bot]"
+          git add tests/coverage-badge.svg
+          git diff --staged --quiet || git commit -m "Update coverage badge to $COVERAGE_PERCENTAGE%"
+          git push
+
+      - name: Check coverage threshold
+        run: |
+          coverage report --fail-under=50
+
+      - name: Archive test results
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: test-results-${{ matrix.python-version }}-v6-${{ matrix.vantage6-version }}
+          path: |
+            htmlcov/
+            coverage.json
+
+  lint:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install linting dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install flake8 black mypy
+          pip install -r requirements.txt
+
+      - name: Run Black code formatter check
+        run: |
+          black --check --diff v6-descriptive-statistics/ tests/
+
+      - name: Run Flake8 linter
+        run: |
+          flake8 v6-descriptive-statistics/ tests/ --max-line-length=120 --extend-ignore=E203,W503
+
+      - name: Run MyPy type checker
+        run: |
+           mypy src/vantage6_strongaya_general/ --ignore-missing-imports
+
+  security:
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: "3.10"
+
+      - name: Install security scanning dependencies
+        run: |
+          python -m pip install --upgrade pip
+          pip install bandit safety
+
+      - name: Run Bandit security linter
+        run: |
+          bandit -r v6-descriptive-statistics/ -f json -o bandit-report.json || true
+
+      - name: Check dependencies for known vulnerabilities
+        run: |
+          safety check --json --output safety-report.json || true
+
+      - name: Upload security reports
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: security-reports
+          path: |
+            bandit-report.json
+            safety-report.json
+

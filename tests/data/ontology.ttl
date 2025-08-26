@@ -1,0 +1,137 @@
+@prefix agg: <http://jena.apache.org/ARQ/function/aggregate#> .
+@prefix : <http://www.w3.org/2000/01/rdf-schema#> .
+@prefix sail: <http://www.openrdf.org/config/sail#> .
+@prefix data: <http://host.docker.internal/rdf/data/> .
+@prefix owl: <http://www.w3.org/2002/07/owl#> .
+@prefix geof: <http://www.opengis.net/def/function/geosparql/> .
+@prefix xsd: <http://www.w3.org/2001/XMLSchema#> .
+@prefix fn: <http://www.w3.org/2005/xpath-functions> .
+@prefix spif: <http://spinrdf.org/spif#> .
+@prefix path: <http://www.ontotext.com/path#> .
+@prefix array: <http://www.w3.org/2005/xpath-functions/array> .
+@prefix apf: <http://jena.apache.org/ARQ/property#> .
+@prefix rep: <http://www.openrdf.org/config/repository#> .
+@prefix map: <http://www.w3.org/2005/xpath-functions/map> .
+@prefix sr: <http://www.openrdf.org/config/repository/sail#> .
+@prefix wgs: <http://www.w3.org/2003/01/geo/wgs84_pos#> .
+@prefix gn: <http://www.geonames.org/ontology#> .
+@prefix afn: <http://jena.apache.org/ARQ/function#> .
+@prefix list: <http://jena.apache.org/ARQ/list#> .
+@prefix dbo: <http://um-cds/ontologies/databaseontology/> .
+@prefix rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#> .
+@prefix ofn: <http://www.ontotext.com/sparql/functions/> .
+@prefix geoext: <http://rdf.useekm.com/ext#> .
+@prefix graphdb: <http://www.ontotext.com/config/graphdb#> .
+@prefix math: <http://www.w3.org/2005/xpath-functions/math> .
+@prefix omgeo: <http://www.ontotext.com/owlim/geo#> .
+@prefix db: <http://host.docker.internal/rdf/ontology/> .
+
+dbo:TableRow a owl:Class .
+
+dbo:ColumnCell a owl:Class .
+
+dbo:PrimaryKey a owl:Class;
+  :subClassOf dbo:ColumnCell .
+
+dbo:ForeignKey a owl:Class;
+  :subClassOf dbo:ColumnCell .
+
+dbo:has_column a owl:ObjectProperty;
+  :domain dbo:TableRow;
+  :range dbo:ColumnCell .
+
+dbo:has_value a owl:ObjectProperty;
+  :domain dbo:ColumnCell;
+  :range dbo:Cell .
+
+dbo:has_cell a owl:DatatypeProperty;
+  :domain dbo:ColumnCell .
+
+dbo:has_unit a owl:AnnotationProperty;
+  :domain dbo:ColumnCell .
+
+dbo:ColumnReference a owl:ObjectProperty;
+  :domain dbo:ColumnCell;
+  :range dbo:ColumnCell .
+
+dbo:table a owl:AnnotationProperty;
+  :domain dbo:ColumnCell;
+  :range dbo:TableRow .
+
+dbo:catalog a owl:AnnotationProperty;
+  :domain dbo:TableRow .
+
+dbo:schema a owl:AnnotationProperty;
+  :domain dbo:TableRow .
+
+dbo:column a owl:AnnotationProperty;
+  :domain dbo:ColumnCell .
+
+<http://data.local/rdf/ontology/HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020>
+  a owl:Class;
+  :subClassOf dbo:TableRow;
+  :label "HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020";
+  dbo:table "HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020" .
+
+<http://data.local/rdf/ontology/HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020.id>
+  a owl:Class;
+  :subClassOf dbo:ColumnCell;
+  :label "HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020.id";
+  dbo:table <http://data.local/rdf/ontology/HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020>;
+  dbo:column "id" .
+
+<http://data.local/rdf/ontology/HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020.index_tumour_location>
+  a owl:Class;
+  :subClassOf dbo:ColumnCell;
+  :label "HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020.index_tumour_location";
+  dbo:table <http://data.local/rdf/ontology/HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020>;
+  dbo:column "index_tumour_location" .
+
+<http://data.local/rdf/ontology/HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020.age_at_diagnosis>
+  a owl:Class;
+  :subClassOf dbo:ColumnCell;
+  :label "HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020.age_at_diagnosis";
+  dbo:table <http://data.local/rdf/ontology/HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020>;
+  dbo:column "age_at_diagnosis" .
+
+<http://data.local/rdf/ontology/HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020.clin_t>
+  a owl:Class;
+  :subClassOf dbo:ColumnCell;
+  :label "HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020.clin_t";
+  dbo:table <http://data.local/rdf/ontology/HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020>;
+  dbo:column "clin_t" .
+
+<http://data.local/rdf/ontology/HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020.clin_n>
+  a owl:Class;
+  :subClassOf dbo:ColumnCell;
+  :label "HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020.clin_n";
+  dbo:table <http://data.local/rdf/ontology/HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020>;
+  dbo:column "clin_n" .
+
+<http://data.local/rdf/ontology/HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020.clin_m>
+  a owl:Class;
+  :subClassOf dbo:ColumnCell;
+  :label "HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020.clin_m";
+  dbo:table <http://data.local/rdf/ontology/HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020>;
+  dbo:column "clin_m" .
+
+<http://data.local/rdf/ontology/HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020.overall_survival_in_days>
+  a owl:Class;
+  :subClassOf dbo:ColumnCell;
+  :label "HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020.overall_survival_in_days";
+  dbo:table <http://data.local/rdf/ontology/HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020>;
+  dbo:column "overall_survival_in_days" .
+
+<http://data.local/rdf/ontology/HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020.biological_sex>
+  a owl:Class;
+  :subClassOf dbo:ColumnCell;
+  :label "HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020.biological_sex";
+  dbo:table <http://data.local/rdf/ontology/HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020>;
+  dbo:column "biological_sex" .
+
+<http://data.local/rdf/ontology/HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020.event_overall_survival>
+  a owl:Class;
+  :subClassOf dbo:ColumnCell;
+  :label "HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020.event_overall_survival";
+  dbo:table <http://data.local/rdf/ontology/HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020>;
+  dbo:column "event_overall_survival" .
