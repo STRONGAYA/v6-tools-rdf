@@ -24,14 +24,14 @@ def add_missing_data_info(df: pd.DataFrame, placeholder: Any) -> None:
         df (pd.DataFrame): The DataFrame to add missing data information to.
         placeholder (Any): The placeholder to use for missing data.
     """
-    if not hasattr(df, 'predetermined_info'):
+    if not hasattr(df, "predetermined_info"):
         df.predetermined_info = PredeterminedInfoAccessor(df)
     df.predetermined_info.add_stat(
-        'missing_values',
+        "missing_values",
         calculation_func=_compute_local_missing_values,
         per_column=True,
         store_output_index=0,
-        placeholder=placeholder
+        placeholder=placeholder,
     )
 
 
@@ -46,12 +46,16 @@ def extract_subclass_info(df: pd.DataFrame, variable: str) -> pd.DataFrame:
     Returns:
         pd.DataFrame: The DataFrame with subclass information where it is available.
     """
-    if 'sub_class' in df.columns:
+    if "sub_class" in df.columns:
         df[variable] = df.apply(
-            lambda row: row['value'] if pd.isna(row['sub_class']) or row['sub_class'] == '' else row['sub_class'],
-            axis=1
+            lambda row: (
+                row["value"]
+                if pd.isna(row["sub_class"]) or row["sub_class"] == ""
+                else row["sub_class"]
+            ),
+            axis=1,
         )
-        df = df.drop(columns=['sub_class', 'value'])
+        df = df.drop(columns=["sub_class", "value"])
     else:
-        df = df.rename(columns={'value': variable})
+        df = df.rename(columns={"value": variable})
     return df

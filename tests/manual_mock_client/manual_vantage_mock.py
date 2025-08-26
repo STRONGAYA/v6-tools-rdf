@@ -52,7 +52,7 @@ central_task = client.task.create(
         "method": "central_rdf_mock",
         "kwargs": {
             "variables_to_extract": ["Variable_1", "Variable_2"],
-        }
+        },
     },
     organizations=[org_ids[0]],
 )
@@ -63,9 +63,10 @@ print(results)
 task = client.task.create(
     input_={
         "method": "partial_rdf_mock",
-        "kwargs": {"kwargs": {
-            "variables_to_extract": ["Variable_1", "Variable_2"],
-        }
+        "kwargs": {
+            "kwargs": {
+                "variables_to_extract": ["Variable_1", "Variable_2"],
+            }
         },
     },
     organizations=org_ids,

@@ -1,3 +1,4 @@
 vantage6-algorithm-tools
 pandas
-#
+
+git+https://github.com/STRONGAYA/v6-tools-general.git@v1.0.1

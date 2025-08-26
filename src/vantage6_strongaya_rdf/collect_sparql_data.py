@@ -32,15 +32,21 @@ def _load_query_template(query_name: str) -> str:
         str: The SPARQL query template.
     """
     try:
-        with resources.files('vantage6_strongaya_rdf').joinpath(f'query_templates').joinpath(f'{query_name}.rq').open(
-                'r') as file:
+        with (
+            resources.files("vantage6_strongaya_rdf")
+            .joinpath(f"query_templates")
+            .joinpath(f"{query_name}.rq")
+            .open("r") as file
+        ):
             return file.read()
     except Exception as e:
         safe_log("error", f"Error reading SPARQL query file: {e}.")
         return ""
 
 
-def _process_variable_query(endpoint: str, query_template: str, variable: str, variable_property: str) -> pd.DataFrame:
+def _process_variable_query(
+    endpoint: str, query_template: str, variable: str, variable_property: str
+) -> pd.DataFrame:
     """
     Process the SPARQL query for a single variable.
 
@@ -54,25 +60,30 @@ def _process_variable_query(endpoint: str, query_template: str, variable: str, v
         pd.DataFrame: The DataFrame containing the query results.
     """
     ontology_part = variable.split(":")[0] + ":"
-    query = query_template.replace("PLACEHOLDER_CLASS", variable
-                                   ).replace("PLACEHOLDER_ONTOLOGY", ontology_part
-                                             ).replace("PLACEHOLDER_PREDICATE", variable_property)
+    query = (
+        query_template.replace("PLACEHOLDER_CLASS", variable)
+        .replace("PLACEHOLDER_ONTOLOGY", ontology_part)
+        .replace("PLACEHOLDER_PREDICATE", variable_property)
+    )
 
     safe_log("info", f"Posting SPARQL query for {variable}.")
     result = post_sparql_query(endpoint=endpoint, query=query)
 
     if result:
         result_df = pd.DataFrame(result)
-        result_df.drop(columns=['patient'], inplace=True)
-        result_df['patient_id'] = result_df.index
+        result_df.drop(columns=["patient"], inplace=True)
+        result_df["patient_id"] = result_df.index
         return extract_subclass_info(result_df, variable)
     return pd.DataFrame(columns=[variable])
 
 
-def collect_sparql_data(variables_to_describe: List[str], query_type: str = 'single_column',
-                        endpoint: str = "http://localhost:7200/repositories/userRepo",
-                        variable_property: str = "dbo:has_column",
-                        missing_data_notation: str = "") -> pd.DataFrame:
+def collect_sparql_data(
+    variables_to_describe: List[str],
+    query_type: str = "single_column",
+    endpoint: str = "http://localhost:7200/repositories/userRepo",
+    variable_property: str = "dbo:has_column",
+    missing_data_notation: str = "",
+) -> pd.DataFrame:
     """
     Collect data from SPARQL endpoints for specified variables.
 
@@ -99,8 +110,8 @@ def collect_sparql_data(variables_to_describe: List[str], query_type: str = 'sin
     variable_property = get_env_var("VARIABLE_PROPERTY", variable_property)
     missing_data_notation = get_env_var("MISSING_DATA_NOTATION", missing_data_notation)
 
-    if query_type == 'single_column':
-        query_template = _load_query_template('single_column')
+    if query_type == "single_column":
+        query_template = _load_query_template("single_column")
     else:
         safe_log("error", f"Unknown query type: {query_type}.")
         return pd.DataFrame(columns=variables_to_describe)
@@ -109,12 +120,16 @@ def collect_sparql_data(variables_to_describe: List[str], query_type: str = 'sin
 
     for variable in variables_to_describe:
         try:
-            result_df = _process_variable_query(endpoint, query_template, variable, variable_property)
+            result_df = _process_variable_query(
+                endpoint, query_template, variable, variable_property
+            )
             if not result_df.empty:
                 if intermediate_df.empty:
                     intermediate_df = result_df
                 else:
-                    intermediate_df = pd.merge(intermediate_df, result_df, on="patient_id", how="outer")
+                    intermediate_df = pd.merge(
+                        intermediate_df, result_df, on="patient_id", how="outer"
+                    )
         except Exception as e:
             safe_log("error", f"Error processing {variable}: {e}")
             continue
@@ -122,4 +137,8 @@ def collect_sparql_data(variables_to_describe: List[str], query_type: str = 'sin
     # add_missing_data_info(intermediate_df, missing_data_notation)
     intermediate_df = intermediate_df.replace(missing_data_notation, pd.NA)
 
-    return intermediate_df if not intermediate_df.empty else pd.DataFrame(columns=variables_to_describe)
+    return (
+        intermediate_df
+        if not intermediate_df.empty
+        else pd.DataFrame(columns=variables_to_describe)
+    )

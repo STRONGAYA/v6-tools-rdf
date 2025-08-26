@@ -12,16 +12,17 @@ from pathlib import Path
 
 # Determine the project root directory
 # If run from /test directory, go up one level
-if os.path.basename(os.getcwd()) == 'test':
+if os.path.basename(os.getcwd()) == "test":
     PROJECT_ROOT = os.path.dirname(os.getcwd())
 else:
     PROJECT_ROOT = os.getcwd()
 
 # Add the src directory to Python path for local imports
-sys.path.insert(0, os.path.join(PROJECT_ROOT, 'src'))
+sys.path.insert(0, os.path.join(PROJECT_ROOT, "src"))
 
 # TODO move rdf-store setup using Flyover and data curl to conftest.py for reuse in other test files;
 #  data is already in tests/data/*.ttl
+
 
 class TestVantage6RDF(unittest.TestCase):
     """
@@ -37,7 +38,9 @@ class TestVantage6RDF(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """Set up test environment with GraphDB."""
-        print(f"=== Starting test setup at {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} ===")
+        print(
+            f"=== Starting test setup at {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} ==="
+        )
         print(f"Current directory: {os.getcwd()}")
         print(f"Project root: {PROJECT_ROOT}")
 
@@ -64,10 +67,12 @@ class TestVantage6RDF(unittest.TestCase):
     @classmethod
     def tearDownClass(cls):
         """Clean up by stopping GraphDB and removing Flyover clone."""
-        print(f"=== Cleaning up at {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} ===")
+        print(
+            f"=== Cleaning up at {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} ==="
+        )
 
         # Stop GraphDB using docker-compose
-        if hasattr(cls, 'flyover_path') and cls.flyover_path:
+        if hasattr(cls, "flyover_path") and cls.flyover_path:
             try:
                 # Change to the Flyover directory
                 original_dir = os.getcwd()
@@ -86,7 +91,7 @@ class TestVantage6RDF(unittest.TestCase):
                         cmd,
                         check=False,  # Don't fail if already stopped
                         stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE
+                        stderr=subprocess.PIPE,
                     )
                     print("GraphDB service stopped")
 
@@ -97,7 +102,7 @@ class TestVantage6RDF(unittest.TestCase):
                 print("You may need to manually clean up containers.")
 
         # Remove temporary Flyover clone if we created one
-        if hasattr(cls, 'temp_dir') and cls.temp_dir and os.path.exists(cls.temp_dir):
+        if hasattr(cls, "temp_dir") and cls.temp_dir and os.path.exists(cls.temp_dir):
             print(f"Removing temporary Flyover clone at: {cls.temp_dir}")
             try:
                 shutil.rmtree(cls.temp_dir)
@@ -109,13 +114,19 @@ class TestVantage6RDF(unittest.TestCase):
     def _verify_local_files(cls):
         """Verify that local source files are available."""
         required_paths = [
-            os.path.join(PROJECT_ROOT, 'src/vantage6_strongaya_rdf/collect_sparql_data.py'),
-            os.path.join(PROJECT_ROOT, 'src/vantage6_strongaya_rdf/sparql_client.py')
+            os.path.join(
+                PROJECT_ROOT, "src/vantage6_strongaya_rdf/collect_sparql_data.py"
+            ),
+            os.path.join(PROJECT_ROOT, "src/vantage6_strongaya_rdf/sparql_client.py"),
         ]
 
         # Query template path (verify it exists)
         template_file = os.path.join(
-            PROJECT_ROOT, 'src', 'vantage6_strongaya_rdf', 'query_templates', 'single_column.rq'
+            PROJECT_ROOT,
+            "src",
+            "vantage6_strongaya_rdf",
+            "query_templates",
+            "single_column.rq",
         )
         required_paths.append(template_file)
 
@@ -129,23 +140,31 @@ class TestVantage6RDF(unittest.TestCase):
         if missing_files:
             print(f"Warning: The following files are missing: {missing_files}")
             print(f"Project root directory contents: {os.listdir(PROJECT_ROOT)}")
-            if os.path.exists(os.path.join(PROJECT_ROOT, 'src')):
-                print(f"src directory contents: {os.listdir(os.path.join(PROJECT_ROOT, 'src'))}")
+            if os.path.exists(os.path.join(PROJECT_ROOT, "src")):
+                print(
+                    f"src directory contents: {os.listdir(os.path.join(PROJECT_ROOT, 'src'))}"
+                )
 
                 # Print subdirectories to help diagnose where template might be
-                vantage6_dir = os.path.join(PROJECT_ROOT, 'src', 'vantage6_strongaya_rdf')
+                vantage6_dir = os.path.join(
+                    PROJECT_ROOT, "src", "vantage6_strongaya_rdf"
+                )
                 if os.path.exists(vantage6_dir):
-                    print(f"vantage6_strongaya_rdf contents: {os.listdir(vantage6_dir)}")
+                    print(
+                        f"vantage6_strongaya_rdf contents: {os.listdir(vantage6_dir)}"
+                    )
 
-                    template_dir = os.path.join(vantage6_dir, 'query_templates')
+                    template_dir = os.path.join(vantage6_dir, "query_templates")
                     if os.path.exists(template_dir):
                         print(f"query_templates contents: {os.listdir(template_dir)}")
                     else:
                         print("query_templates directory not found")
 
             # Fail if critical files are missing
-            if any(x in path for x in ['collect_sparql_data.py', 'sparql_client.py']):
-                raise FileNotFoundError(f"Critical source files are missing: {missing_files}")
+            if any(x in path for x in ["collect_sparql_data.py", "sparql_client.py"]):
+                raise FileNotFoundError(
+                    f"Critical source files are missing: {missing_files}"
+                )
 
             print("Non-critical files missing, continuing anyway.")
 
@@ -153,9 +172,9 @@ class TestVantage6RDF(unittest.TestCase):
     def _clone_flyover_repo(cls):
         """Clone the Flyover repository to use its docker-compose."""
         # Check if FLYOVER_PATH is set and valid
-        flyover_path = os.environ.get('FLYOVER_PATH')
+        flyover_path = os.environ.get("FLYOVER_PATH")
         if flyover_path and os.path.exists(flyover_path):
-            if os.path.exists(os.path.join(flyover_path, 'docker-compose.yml')):
+            if os.path.exists(os.path.join(flyover_path, "docker-compose.yml")):
                 print(f"Using existing Flyover repository at: {flyover_path}")
                 cls.flyover_path = flyover_path
                 cls.temp_dir = None  # No temporary directory to clean up
@@ -171,16 +190,23 @@ class TestVantage6RDF(unittest.TestCase):
         print("Cloning Flyover repository...")
         try:
             subprocess.run(
-                ["git", "clone", "https://github.com/MaastrichtU-CDS/Flyover.git", cls.flyover_path],
+                [
+                    "git",
+                    "clone",
+                    "https://github.com/MaastrichtU-CDS/Flyover.git",
+                    cls.flyover_path,
+                ],
                 check=True,
                 stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE
+                stderr=subprocess.PIPE,
             )
             print(f"Flyover repository cloned successfully to: {cls.flyover_path}")
         except subprocess.CalledProcessError as e:
             print(f"Failed to clone Flyover repository: {e}")
             print(f"Error output: {e.stderr.decode() if hasattr(e, 'stderr') else ''}")
-            raise RuntimeError("Failed to clone Flyover repository. Make sure Git is installed and working.")
+            raise RuntimeError(
+                "Failed to clone Flyover repository. Make sure Git is installed and working."
+            )
 
     @classmethod
     def _get_compose_command(cls):
@@ -192,7 +218,7 @@ class TestVantage6RDF(unittest.TestCase):
                 [compose_cmd, "--version"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                text=True
+                text=True,
             )
             if result.returncode == 0:
                 print(f"Using docker-compose: {result.stdout.strip()}")
@@ -207,7 +233,7 @@ class TestVantage6RDF(unittest.TestCase):
                 compose_cmd + ["--version"],
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                text=True
+                text=True,
             )
             if result.returncode == 0:
                 print(f"Using docker compose: {result.stdout.strip()}")
@@ -235,8 +261,10 @@ class TestVantage6RDF(unittest.TestCase):
             os.chdir(cls.flyover_path)
 
             # Check if docker-compose.yml exists
-            if not os.path.exists('docker-compose.yml'):
-                raise FileNotFoundError(f"docker-compose.yml not found in {cls.flyover_path}")
+            if not os.path.exists("docker-compose.yml"):
+                raise FileNotFoundError(
+                    f"docker-compose.yml not found in {cls.flyover_path}"
+                )
 
             # Check if service is already running
             if isinstance(compose_cmd, list):
@@ -245,10 +273,7 @@ class TestVantage6RDF(unittest.TestCase):
                 ps_cmd = [compose_cmd, "ps", "rdf-store"]
 
             result = subprocess.run(
-                ps_cmd,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True
+                ps_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
             )
 
             if "Up" in result.stdout:
@@ -264,10 +289,7 @@ class TestVantage6RDF(unittest.TestCase):
                     cmd = [compose_cmd, "up", "-d", "rdf-store"]
 
                 process = subprocess.run(
-                    cmd,
-                    stdout=subprocess.PIPE,
-                    stderr=subprocess.PIPE,
-                    text=True
+                    cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
                 )
 
                 if process.returncode != 0:
@@ -282,7 +304,7 @@ class TestVantage6RDF(unittest.TestCase):
 
         except Exception as e:
             # Make sure we return to the original directory even if there's an error
-            if 'original_dir' in locals():
+            if "original_dir" in locals():
                 os.chdir(original_dir)
             raise e
 
@@ -294,7 +316,7 @@ class TestVantage6RDF(unittest.TestCase):
             return filename
 
         # Check test directory if we're not already in it
-        test_dir_path = os.path.join(PROJECT_ROOT, 'test', filename)
+        test_dir_path = os.path.join(PROJECT_ROOT, "test", filename)
         if os.path.exists(test_dir_path):
             return test_dir_path
 
@@ -318,13 +340,17 @@ class TestVantage6RDF(unittest.TestCase):
             try:
                 response = requests.get("http://localhost:7200/rest/repositories")
                 if response.status_code == 200:
-                    print(f"GraphDB is up and running! (took {time.time() - start_time:.1f} seconds)")
+                    print(
+                        f"GraphDB is up and running! (took {time.time() - start_time:.1f} seconds)"
+                    )
                     time.sleep(5)  # Additional safety margin
                     return
             except requests.exceptions.ConnectionError:
                 pass
 
-            print(f"Still waiting for GraphDB... ({int(time.time() - start_time)}s elapsed)")
+            print(
+                f"Still waiting for GraphDB... ({int(time.time() - start_time)}s elapsed)"
+            )
             time.sleep(5)
 
     @classmethod
@@ -342,28 +368,21 @@ class TestVantage6RDF(unittest.TestCase):
         # List all available repositories
         print("Available repositories:")
         for repo in repositories:
-            repo_id = repo.get('id')
-            repo_title = repo.get('title', 'No title')
+            repo_id = repo.get("id")
+            repo_title = repo.get("title", "No title")
             print(f"  - {repo_id}: {repo_title}")
 
         # Use the first repository
-        repo_id = repositories[0].get('id')
+        repo_id = repositories[0].get("id")
         print(f"Using repository: {repo_id}")
         return repo_id
 
     @classmethod
     def _create_repository(cls):
         """Create a new test repository."""
-        config = {
-            "id": "test-repo",
-            "title": "Test Repository",
-            "type": "free"
-        }
+        config = {"id": "test-repo", "title": "Test Repository", "type": "free"}
 
-        response = requests.post(
-            "http://localhost:7200/rest/repositories",
-            json=config
-        )
+        response = requests.post("http://localhost:7200/rest/repositories", json=config)
 
         if not response.ok:
             raise RuntimeError(f"Failed to create repository: {response.text}")
@@ -374,11 +393,7 @@ class TestVantage6RDF(unittest.TestCase):
     @classmethod
     def _load_test_data(cls):
         """Load test data files into GraphDB."""
-        data_filenames = [
-            "ontology.ttl",
-            "data.ttl",
-            "annotation.ttl"
-        ]
+        data_filenames = ["ontology.ttl", "data.ttl", "annotation.ttl"]
 
         # Get repository endpoint
         repo_endpoint = f"http://localhost:7200/repositories/{cls.repository_id}/"
@@ -395,19 +410,27 @@ class TestVantage6RDF(unittest.TestCase):
             print(f"Loading {file_path}...")
 
             content_type = {
-                '.owl': 'application/rdf+xml',
-                '.ttl': 'text/turtle',
-                '.nt': 'application/n-triples',
-                '.nq': 'application/n-quads',
-                '.trig': 'application/trig',
-                '.jsonld': 'application/ld+json'
-            }.get(Path(file_path).suffix, 'text/turtle')
+                ".owl": "application/rdf+xml",
+                ".ttl": "text/turtle",
+                ".nt": "application/n-triples",
+                ".nq": "application/n-quads",
+                ".trig": "application/trig",
+                ".jsonld": "application/ld+json",
+            }.get(Path(file_path).suffix, "text/turtle")
 
             try:
                 subprocess.run(
-                    ["curl", "-X", "POST", "-H", "Content-Type: application/x-turtle", "--data-binary",
-                     f"@{filename}",
-                     f"{repo_endpoint}/rdf-graphs/service?graph=http://{filename[:filename.rfind('.')]}.local/"])
+                    [
+                        "curl",
+                        "-X",
+                        "POST",
+                        "-H",
+                        "Content-Type: application/x-turtle",
+                        "--data-binary",
+                        f"@{filename}",
+                        f"{repo_endpoint}/rdf-graphs/service?graph=http://{filename[:filename.rfind('.')]}.local/",
+                    ]
+                )
 
                 print(f"Successfully loaded {file_path}")
                 files_loaded = True
@@ -439,7 +462,7 @@ class TestVantage6RDF(unittest.TestCase):
             variables_to_describe=variables_to_describe,
             query_type="single_column",
             endpoint=f"http://localhost:7200/repositories/{self.repository_id}",
-            variable_property="sio:SIO_000008"
+            variable_property="sio:SIO_000008",
         )
 
         # Output result information
@@ -449,16 +472,20 @@ class TestVantage6RDF(unittest.TestCase):
             print(f"First few rows:\n{result.head(3)}")
 
         # Verify DataFrame properties
-        self.assertIsInstance(result, pd.DataFrame, "Result should be a pandas DataFrame")
+        self.assertIsInstance(
+            result, pd.DataFrame, "Result should be a pandas DataFrame"
+        )
         self.assertFalse(result.empty, "Result DataFrame should not be empty")
 
         # Verify columns match expected variables
         all_cols = set(result.columns)
-        self.assertIn('patient_id', all_cols, "patient_id column should be present")
+        self.assertIn("patient_id", all_cols, "patient_id column should be present")
 
         # Check that all requested variables are in the result
         for variable in variables_to_describe:
-            self.assertIn(variable, all_cols, f"Column {variable} should be present in result")
+            self.assertIn(
+                variable, all_cols, f"Column {variable} should be present in result"
+            )
 
         # ===== Direct comparison with SPARQL results =====
         # Get raw data from GraphDB to compare with collect_sparql_data results
@@ -489,7 +516,7 @@ class TestVantage6RDF(unittest.TestCase):
             response = requests.post(
                 f"http://localhost:7200/repositories/{self.repository_id}",
                 headers={"Accept": "application/sparql-results+json"},
-                data={"query": sparql_query}
+                data={"query": sparql_query},
             )
 
             if not response.ok:
@@ -500,10 +527,10 @@ class TestVantage6RDF(unittest.TestCase):
 
             # Convert to dictionary: patient_uri -> value
             variable_data = {}
-            for binding in query_results['results']['bindings']:
-                patient_uri = binding['patient']['value']
-                patient_id = patient_uri.split('/')[-1]  # Extract ID from URI
-                value = binding['value']['value']
+            for binding in query_results["results"]["bindings"]:
+                patient_uri = binding["patient"]["value"]
+                patient_id = patient_uri.split("/")[-1]  # Extract ID from URI
+                value = binding["value"]["value"]
                 variable_data[patient_id] = value
 
             all_direct_results[variable] = variable_data
@@ -514,7 +541,7 @@ class TestVantage6RDF(unittest.TestCase):
         for variable, variable_data in all_direct_results.items():
             for patient_id, expected_value in variable_data.items():
                 # Find this patient in result DataFrame
-                patient_rows = result[result['patient_id'] == patient_id]
+                patient_rows = result[result["patient_id"] == patient_id]
 
                 if not patient_rows.empty:
                     actual_value = str(patient_rows.iloc[0][variable])
@@ -527,10 +554,12 @@ class TestVantage6RDF(unittest.TestCase):
                         actual_value,
                         expected_value,
                         f"Value mismatch for patient {patient_id}, variable {variable}: "
-                        f"expected {expected_value}, got {actual_value}"
+                        f"expected {expected_value}, got {actual_value}",
                     )
                 else:
-                    self.fail(f"Patient {patient_id} from direct query not found in result DataFrame")
+                    self.fail(
+                        f"Patient {patient_id} from direct query not found in result DataFrame"
+                    )
 
     def test_sparql_client(self):
         """Test the SPARQL client functionality."""
@@ -549,7 +578,7 @@ class TestVantage6RDF(unittest.TestCase):
         # Execute the query
         result = post_sparql_query(
             endpoint=f"http://localhost:7200/repositories/{self.repository_id}",
-            query=query
+            query=query,
         )
 
         print(f"SPARQL query result type: {type(result)}")
@@ -557,8 +586,10 @@ class TestVantage6RDF(unittest.TestCase):
 
         # Validate response
         self.assertTrue(result, "SPARQL query should return non-empty result")
-        self.assertTrue(isinstance(result, (list, dict)),
-                        f"Result should be list or dict, got {type(result)}")
+        self.assertTrue(
+            isinstance(result, (list, dict)),
+            f"Result should be list or dict, got {type(result)}",
+        )
 
     def test_query_template_loading(self):
         """Test the query template loading functionality."""
@@ -568,28 +599,34 @@ class TestVantage6RDF(unittest.TestCase):
         print("\nTesting query template loading")
 
         # Load the template used by collect_sparql_data
-        template = _load_query_template('single_column')
+        template = _load_query_template("single_column")
 
         print(f"Template loaded successfully: {bool(template)}")
         if template:
-            template_lines = template.split('\n')
+            template_lines = template.split("\n")
             print(f"Template preview: {len(template_lines)} lines")
-            print('\n'.join(template_lines[:5]) + "\n[...]\n")
+            print("\n".join(template_lines[:5]) + "\n[...]\n")
 
         # Validate
         self.assertTrue(template, "Query template should be loaded successfully")
-        self.assertIn("PLACEHOLDER", template,
-                      "Template should contain placeholder for variable substitution")
+        self.assertIn(
+            "PLACEHOLDER",
+            template,
+            "Template should contain placeholder for variable substitution",
+        )
 
     def test_variable_processing(self):
         """Test variable query processing with complete validation."""
         # Import from local files
-        from vantage6_strongaya_rdf.collect_sparql_data import _process_variable_query, _load_query_template
+        from vantage6_strongaya_rdf.collect_sparql_data import (
+            _process_variable_query,
+            _load_query_template,
+        )
 
         print("\nTesting variable query processing")
 
         # Load query template
-        query_template = _load_query_template('single_column')
+        query_template = _load_query_template("single_column")
         if not query_template:
             self.skipTest("Skipping test as query template could not be loaded")
 
@@ -598,7 +635,9 @@ class TestVantage6RDF(unittest.TestCase):
         endpoint = f"http://localhost:7200/repositories/{self.repository_id}"
         variable_property = "sio:SIO_000008"
 
-        result_df = _process_variable_query(endpoint, query_template, variable, variable_property)
+        result_df = _process_variable_query(
+            endpoint, query_template, variable, variable_property
+        )
 
         print(f"Result for {variable}:")
         print(f"  Shape: {result_df.shape}")
@@ -607,7 +646,7 @@ class TestVantage6RDF(unittest.TestCase):
         # Verify DataFrame structure
         self.assertIsInstance(result_df, pd.DataFrame)
         self.assertFalse(result_df.empty, f"Should find data for {variable}")
-        self.assertIn('patient_id', result_df.columns)
+        self.assertIn("patient_id", result_df.columns)
         self.assertIn(variable, result_df.columns)
 
         # Verify against direct SPARQL query to ensure consistency
@@ -644,19 +683,24 @@ class TestVantage6RDF(unittest.TestCase):
         response = requests.post(
             endpoint,
             headers={"Accept": "application/sparql-results+json"},
-            data={"query": sparql_query}
+            data={"query": sparql_query},
         )
 
         if not response.ok:
-            self.skipTest(f"Skipping detailed verification as direct query failed: {response.text}")
+            self.skipTest(
+                f"Skipping detailed verification as direct query failed: {response.text}"
+            )
             return
 
         query_results = response.json()
-        direct_count = len(query_results['results']['bindings'])
+        direct_count = len(query_results["results"]["bindings"])
 
         print(f"Direct query found {direct_count} results")
-        self.assertEqual(len(result_df), direct_count,
-                         f"Result should have same number of rows as direct query")
+        self.assertEqual(
+            len(result_df),
+            direct_count,
+            f"Result should have same number of rows as direct query",
+        )
 
 
 if __name__ == "__main__":

@@ -5,6 +5,7 @@ that the central method is executed on a node, just like any other method.
 The results in a return statement are sent to the vantage6 server (after
 encryption if that is enabled).
 """
+
 from typing import Any, List
 
 from vantage6.algorithm.tools.decorators import algorithm_client
@@ -16,10 +17,8 @@ from vantage6_strongaya_rdf.miscellaneous import check_input_structure
 
 # TODO add British english Docstring and update any existing info logging; keep it concise
 @algorithm_client
-def central_rdf_mock(
-        client: AlgorithmClient, variables_to_extract: List[str]
-) -> Any:
-    """ Central part of the algorithm """
+def central_rdf_mock(client: AlgorithmClient, variables_to_extract: List[str]) -> Any:
+    """Central part of the algorithm"""
     safe_log("info", "Starting central algorithm function")
 
     # Collect all organisations that participate in this collaboration unless specified
@@ -29,8 +28,7 @@ def central_rdf_mock(
         "method": "partial_rdf_mock",
         "kwargs": {
             "variables_to_extract": variables_to_extract,
-
-        }
+        },
     }
 
     # create a subtask for all organisations in the collaboration.
@@ -39,7 +37,7 @@ def central_rdf_mock(
         input_=input_,
         organizations=organisation_ids,
         name="My subtask",
-        description="This is a very important subtask"
+        description="This is a very important subtask",
     )
 
     # Wait for the node to return results of the subtask.

@@ -113,15 +113,21 @@ def test_configurations():
         },
         "standard_dataset_bad_actor": {
             "database_label": "rdf_store",  # Always use rdf_store as this refers to the RDF-store setup
-            "variables_to_extract": ["Variable_1", "# TODO add some injection into the SPARQL query to emulate a bad actor"],
+            "variables_to_extract": [
+                "Variable_1",
+                "# TODO add some injection into the SPARQL query to emulate a bad actor",
+            ],
             "expected_failure": True,
             "failure_reason": "Too narrow scope of data stratification parameters "
-                              "resulting in sample size threshold issues.",
+            "resulting in sample size threshold issues.",
             "expected_error_type": [CollectResultsError, PrivacyThresholdViolation],
         },
         "standard_dataset_incorrect_input": {
             "database_label": "rdf_store",  # Always use rdf_store as this refers to the RDF-store setup
-            "variables_to_extract": ["Variable_1", "ncit:C-does-not-exist"],  # Use a non-existent variable
+            "variables_to_extract": [
+                "Variable_1",
+                "ncit:C-does-not-exist",
+            ],  # Use a non-existent variable
             "expected_failure": True,
             "failure_reason": "Non-existent variables requested or invalid input structure specified",
             "expected_error_type": [CollectResultsError, UserInputError],
@@ -189,13 +195,13 @@ class TestAlgorithmComponent:
         ],
     )
     def test_algorithm_basic(
-            self,
-            authentication,
-            algorithm_image_name,
-            test_configurations,
-            test_methods,
-            method,
-            config_name,
+        self,
+        authentication,
+        algorithm_image_name,
+        test_configurations,
+        test_methods,
+        method,
+        config_name,
     ):
         """
         Test algorithm with different methods and configurations, including expected failures.
@@ -337,8 +343,8 @@ def extract_data_from_result(client, task) -> Tuple[pd.DataFrame, pd.DataFrame]:
 
 
 def determine_statistics_acceptance(
-        federated_result: Dict[str, Any],
-        central_result: Dict[str, Any],
+    federated_result: Dict[str, Any],
+    central_result: Dict[str, Any],
 ) -> bool:
     """
     Assert that federated and central statistical results are equivalent within tolerance.
