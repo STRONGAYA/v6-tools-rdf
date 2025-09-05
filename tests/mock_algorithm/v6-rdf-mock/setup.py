@@ -21,6 +21,6 @@ setup(
     install_requires=[
         "vantage6-algorithm-tools",
         "pandas",
-        "vantage6-strongaya-general @ git+https://github.com/STRONGAYA/v6-tools-general.git@v1.0.1",
+        "vantage6-strongaya-general @ git+https://github.com/STRONGAYA/v6-tools-general.git@v1.0.2",
     ],
 )
