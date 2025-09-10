@@ -13,9 +13,26 @@ import pandas as pd
 
 from importlib import resources
 from typing import List
-from vantage6.algorithm.tools.util import get_env_var
 
-from vantage6_strongaya_general.miscellaneous import safe_log
+# Optional import for vantage6 - only needed for vantage6 integration
+try:
+    from vantage6.algorithm.tools.util import get_env_var
+    VANTAGE6_AVAILABLE = True
+except ImportError:
+    VANTAGE6_AVAILABLE = False
+    # Provide fallback for get_env_var
+    def get_env_var(name, default=None):
+        import os
+        return os.environ.get(name, default)
+
+try:
+    from vantage6_strongaya_general.miscellaneous import safe_log
+    STRONGAYA_GENERAL_AVAILABLE = True
+except ImportError:
+    STRONGAYA_GENERAL_AVAILABLE = False
+    # Provide fallback for safe_log
+    def safe_log(level, message):
+        print(f"[{level.upper()}] {message}")
 
 from .sparql_client import post_sparql_query
 from .data_processing import add_missing_data_info, extract_subclass_info

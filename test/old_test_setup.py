@@ -15,8 +15,10 @@ else:
 # Add the src directory to Python path for local imports
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "src"))
 
-# NOTE: Flyover setup has been moved to conftest.py for reuse in other test files
-# TODO remove when we are sure everything works fine
+# NOTE: This file is now deprecated in favour of the pytest-based test infrastructure in /tests
+# The Flyover setup has been successfully migrated to conftest.py and new tests have been implemented
+# covering the same functionality with better organisation and reusability.
+# This file can be safely removed after ensuring all functionality is covered by the new tests.
 
 class TestVantage6RDF(unittest.TestCase):
     """
@@ -121,9 +123,14 @@ class TestVantage6RDF(unittest.TestCase):
 
             print("Non-critical files missing, continuing anyway.")
 
-    # ========== TEST CASES ==========
-
-    # TODO Check whether we need to keep these testcases with renewed setup or whether we just discard them
+    # ========== DEPRECATED TEST CASES ==========
+    # These test cases have been superseded by the new pytest-based infrastructure in /tests
+    # The functionality is now covered by:
+    # - tests/unit/test_library_functions.py (unit tests for SPARQL client and data processing)
+    # - tests/integration/test_rdf_algorithm_integration.py (end-to-end algorithm tests)
+    # - tests/conftest.py (RDF-store setup fixtures)
+    #
+    # These tests are kept temporarily for reference but should be removed once migration is confirmed
     def test_collect_sparql_data_output(self):
         """
         Test that collect_sparql_data returns consistent output.

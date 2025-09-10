@@ -14,7 +14,15 @@ import requests
 from io import StringIO
 from typing import Any, Dict, List, Union
 
-from vantage6_strongaya_general.miscellaneous import safe_log
+# Optional import for strongaya general - only needed for full vantage6 integration
+try:
+    from vantage6_strongaya_general.miscellaneous import safe_log
+    STRONGAYA_GENERAL_AVAILABLE = True
+except ImportError:
+    STRONGAYA_GENERAL_AVAILABLE = False
+    # Provide fallback for safe_log
+    def safe_log(level, message):
+        print(f"[{level.upper()}] {message}")
 
 
 def post_sparql_query(

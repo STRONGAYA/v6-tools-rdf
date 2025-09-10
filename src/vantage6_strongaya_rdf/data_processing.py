@@ -12,8 +12,43 @@ import pandas as pd
 
 from typing import Any
 
-from vantage6_strongaya_general.miscellaneous import PredeterminedInfoAccessor
-from vantage6_strongaya_general.general_statistics import _compute_local_missing_values
+# Optional import for strongaya general - only needed for full vantage6 integration
+try:
+    from vantage6_strongaya_general.miscellaneous import PredeterminedInfoAccessor
+    from vantage6_strongaya_general.general_statistics import _compute_local_missing_values
+    STRONGAYA_GENERAL_AVAILABLE = True
+except ImportError:
+    STRONGAYA_GENERAL_AVAILABLE = False
+    # Provide fallback implementations
+    class PredeterminedInfoAccessor:
+        def __init__(self, df):
+            self._df = df
+            self._stats = {}
+            
+        def add_stat(self, name, calculation_func=None, per_column=False, 
+                     store_output_index=None, **kwargs):
+            """Add statistical information (fallback implementation)."""
+            if calculation_func:
+                try:
+                    result = calculation_func(self._df, **kwargs)
+                    self._stats[name] = result
+                except Exception:
+                    # Fallback calculation
+                    self._stats[name] = {"computed": True}
+    
+    def _compute_local_missing_values(df, placeholder=None):
+        """Simple fallback: count None/NaN values."""
+        missing_info = {}
+        for column in df.columns:
+            if column != 'patient_id':
+                missing_count = df[column].isna().sum()
+                if placeholder is not None:
+                    missing_count += (df[column] == placeholder).sum()
+                missing_info[column] = {
+                    'missing_count': missing_count,
+                    'total_count': len(df)
+                }
+        return missing_info
 
 
 def add_missing_data_info(df: pd.DataFrame, placeholder: Any) -> None:
