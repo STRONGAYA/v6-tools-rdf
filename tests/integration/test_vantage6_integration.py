@@ -42,7 +42,7 @@ def cleanup_vantage6_network(
                 if stop_result.returncode == 0:
                     print("CLI stop was successful")
 
-                time.sleep(2)  # Wait for graceful stop
+                time.sleep(2)  # Wait for a graceful stop
 
                 remove_result = subprocess.run(
                     ["v6", "dev", "remove-demo-network", "--name", "algorithm-ci-test"],

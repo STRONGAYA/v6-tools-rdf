@@ -1,11 +1,3 @@
-"""
-This file contains all central algorithm functions. It is important to note
-that the central method is executed on a node, just like any other method.
-
-The results in a return statement are sent to the vantage6 server (after
-encryption if that is enabled).
-"""
-
 from typing import Any, List
 
 from vantage6.algorithm.tools.decorators import algorithm_client
@@ -36,7 +28,7 @@ def central_rdf_mock(client: AlgorithmClient, variables_to_extract: List[str]) -
     task = client.task.create(
         input_=input_,
         organizations=organisation_ids,
-        name="My subtask",
+        name="rdf-mock subtask",
         description="This is a very important subtask",
     )
 

@@ -57,7 +57,7 @@ def docker_client():
 
 # ========== RDF-store setup fixtures using Flyover ==========
 
-@pytest.fixture(scope="session") 
+@pytest.fixture(scope="session")
 def flyover_repository():
     """Clone or use existing Flyover repository for GraphDB setup."""
     # Check if FLYOVER_PATH is set and valid
@@ -74,12 +74,12 @@ def flyover_repository():
 
     print(f"Creating temporary directory: {temp_dir}")
     print("Cloning Flyover repository...")
-    
+
     try:
         subprocess.run(
             [
                 "git",
-                "clone", 
+                "clone",
                 "https://github.com/MaastrichtU-CDS/Flyover.git",
                 flyover_path,
             ],
@@ -88,13 +88,13 @@ def flyover_repository():
             stderr=subprocess.PIPE,
         )
         print(f"Flyover repository cloned successfully to: {flyover_path}")
-        
+
         yield {"path": flyover_path, "temp_dir": temp_dir}
-        
+
     except subprocess.CalledProcessError as e:
         print(f"Failed to clone Flyover repository: {e}")
         pytest.skip("Failed to clone Flyover repository. Make sure Git is available.")
-    
+
     finally:
         # Clean up temporary directory if we created one
         if temp_dir and os.path.exists(temp_dir):
@@ -147,7 +147,7 @@ def rdf_store(flyover_repository, docker_client):
     """Start GraphDB RDF-store using Flyover's docker-compose."""
     flyover_info = flyover_repository
     flyover_path = flyover_info["path"]
-    
+
     if not flyover_path:
         pytest.skip("Flyover path not available. Cannot start RDF-store.")
 
@@ -205,13 +205,13 @@ def rdf_store(flyover_repository, docker_client):
 
         # Wait for GraphDB to be ready
         _wait_for_graphdb()
-        
+
         # Get or create repository
         repository_id = _get_or_create_repository()
-        
+
         # Load test data
         _load_test_data(repository_id)
-        
+
         yield {
             "repository_id": repository_id,
             "endpoint": f"http://localhost:7200/repositories/{repository_id}",
@@ -223,7 +223,7 @@ def rdf_store(flyover_repository, docker_client):
         if "original_dir" in locals():
             os.chdir(original_dir)
         pytest.skip(f"Failed to set up RDF-store: {e}")
-    
+
     finally:
         # Clean up: stop GraphDB service
         try:
@@ -346,15 +346,15 @@ def _load_test_data(repository_id):
             # Use requests to upload the file instead of curl subprocess
             with open(file_path, 'rb') as f:
                 data = f.read()
-            
+
             headers = {
                 "Content-Type": "application/x-turtle"
             }
-            
+
             graph_url = f"{repo_endpoint}rdf-graphs/service?graph=http://{filename.replace('.ttl', '')}.local/"
-            
+
             response = requests.post(graph_url, data=data, headers=headers)
-            
+
             if response.ok:
                 print(f"Successfully loaded {file_path}")
                 files_loaded = True
@@ -371,11 +371,16 @@ def _load_test_data(repository_id):
 
 @pytest.fixture(scope="session")
 def algorithm_image(docker_client):
-    """Build the algorithm Docker image for the entire test session."""
-    # Use mock algorithm located in /tests/mock_algorithm instead of repo root
-    tests_directory = Path(__file__).parent
-    mock_algorithm_path = tests_directory / "mock_algorithm" / "v6-rdf-mock"
-    pkg_name = "v6-rdf-mock"  # Use the mock algorithm package name
+    """Build the algorithm Docker image for the entire test session. Depends on Flyover setup."""
+
+    # Use mock algorithm located in /tests/mock_algorithm
+    mock_algorithm_path = Path(__file__).parent / "mock_algorithm" / "v6-rdf-mock"
+
+    if not mock_algorithm_path.exists():
+        pytest.skip(f"Mock algorithm directory not found at {mock_algorithm_path}")
+
+    # Use v6-rdf-mock as package name
+    pkg_name = "v6-rdf-mock"
 
     # Create image tag from package name
     image_tag = f"{pkg_name}:ci-test"
@@ -385,29 +390,50 @@ def algorithm_image(docker_client):
         print(f"Package name: {pkg_name}")
         print(f"Image tag: {image_tag}")
 
-        # Build Docker image for the algorithm
-        build_result = subprocess.run(
-            [
-                "docker",
-                "build",
-                "-t",
-                image_tag,
-                "--build-arg",
-                f"PKG_NAME={pkg_name}",
-                str(mock_algorithm_path),
-            ],
-            check=True,
-            timeout=300,
-            capture_output=True,
-            text=True,
-        )
+        # Copy v6-tools-rdf source to the mock algorithm directory temporarily
+        v6_tools_src = Path(__file__).parent.parent / "src"
+        v6_tools_pyproject = Path(__file__).parent.parent / "pyproject.toml"
+        v6_tools_readme = Path(__file__).parent.parent / "README.md"
 
-        if build_result.returncode != 0:
-            pytest.skip(
-                f"Algorithm image build failed with exit code {build_result.returncode}:\n"
-                f"STDOUT: {build_result.stdout}\n"
-                f"STDERR: {build_result.stderr}"
+        temp_v6_dir = mock_algorithm_path / "v6-tools-rdf-src"
+        if temp_v6_dir.exists():
+            shutil.rmtree(temp_v6_dir)
+        temp_v6_dir.mkdir()
+
+        # Copy the source files
+        shutil.copytree(v6_tools_src, temp_v6_dir / "src")
+        shutil.copy2(v6_tools_pyproject, temp_v6_dir)
+        shutil.copy2(v6_tools_readme, temp_v6_dir)
+
+        try:
+            # Build Docker image for the mock algorithm
+            build_result = subprocess.run(
+                [
+                    "docker",
+                    "build",
+                    "-t",
+                    image_tag,
+                    "--build-arg",
+                    f"PKG_NAME={pkg_name}",
+                    str(mock_algorithm_path),
+                ],
+                check=True,
+                timeout=300,
+                capture_output=True,
+                text=True,
             )
+
+            if build_result.returncode != 0:
+                pytest.skip(
+                    f"Algorithm image build failed with exit code {build_result.returncode}:\n"
+                    f"STDOUT: {build_result.stdout}\n"
+                    f"STDERR: {build_result.stderr}"
+                )
+
+        finally:
+            # Clean up temporary directory
+            if temp_v6_dir.exists():
+                shutil.rmtree(temp_v6_dir)
 
         # Verify the image was created
         try:
@@ -554,9 +580,7 @@ def vantage6_network_session(docker_client, extra_node_config_file):
 
         # Define dataset paths and names
         datasets = [
-            ("creatures_of_enceladus", data_directory / "creatures_of_enceladus.csv"),
-            ("creatures_of_europa", data_directory / "creatures_of_europa.csv"),
-            ("creatures_of_titan", data_directory / "creatures_of_titan.csv"),
+            ("rdf_store", data_directory / "rdf_store.csv")
         ]
 
         # Create and start a demo network with extra node config
@@ -681,7 +705,7 @@ def vantage6_network_session(docker_client, extra_node_config_file):
 
 
 @pytest.fixture(scope="session")
-def authentication(vantage6_network_session, docker_client):
+def authentication(vantage6_network_session, docker_client) -> Client:
     """
     This function authenticates a client.
 
@@ -694,9 +718,6 @@ def authentication(vantage6_network_session, docker_client):
     Returns:
         Client: An authenticated client with encryption set up.
     """
-    if not VANTAGE6_AVAILABLE:
-        pytest.skip("Vantage6 client not available - install vantage6 to run integration tests")
-    
     # Ensure the network is running before attempting authentication
     if vantage6_network_session["status"] != "running":
         pytest.skip("Vantage6 network is not running - cannot authenticate")
@@ -706,7 +727,7 @@ def authentication(vantage6_network_session, docker_client):
     time.sleep(10)
 
     vantage6_config = {
-        "server_url": docker_client.docker_host,
+        "server_url": "http://localhost",
         "server_port": 7601,
         "server_api": "/api",
         "username": "dev_admin",

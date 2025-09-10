@@ -1,14 +1,9 @@
 import unittest
-import subprocess
 import requests
-import time
 import pandas as pd
 import os
 import sys
-import tempfile
-import shutil
 from datetime import datetime
-from pathlib import Path
 
 # Determine the project root directory
 # If run from /test directory, go up one level
@@ -20,24 +15,20 @@ else:
 # Add the src directory to Python path for local imports
 sys.path.insert(0, os.path.join(PROJECT_ROOT, "src"))
 
-# TODO move rdf-store setup using Flyover and data curl to conftest.py for reuse in other test files;
-#  data is already in tests/data/*.ttl
-
+# NOTE: Flyover setup has been moved to conftest.py for reuse in other test files
+# TODO remove when we are sure everything works fine
 
 class TestVantage6RDF(unittest.TestCase):
     """
     Test suite for v6-tools-rdf library using Flyover's GraphDB setup.
 
-    This test:
-    1. Clones the Flyover repository (if not already available)
-    2. Uses docker-compose from Flyover to start GraphDB
-    3. Runs tests against the GraphDB instance
-    4. Cleans up when done
+    This test class now expects GraphDB to be set up externally (via pytest fixtures).
+    The Flyover setup logic has been moved to conftest.py for better reusability.
     """
 
     @classmethod
     def setUpClass(cls):
-        """Set up test environment with GraphDB."""
+        """Set up test environment - expects GraphDB to already be running."""
         print(
             f"=== Starting test setup at {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} ==="
         )
@@ -47,68 +38,30 @@ class TestVantage6RDF(unittest.TestCase):
         # Verify imports from local files will work
         cls._verify_local_files()
 
-        # Clone Flyover repository for docker-compose
-        cls._clone_flyover_repo()
+        # Check if GraphDB is available
+        try:
+            response = requests.get("http://localhost:7200/rest/repositories")
+            if not response.ok:
+                raise RuntimeError("GraphDB is not accessible. Make sure Flyover setup has been run.")
 
-        # Start GraphDB using docker-compose from Flyover
-        cls._start_graphdb_with_compose()
+            repositories = response.json()
+            if not repositories:
+                raise RuntimeError("No repositories found in GraphDB.")
 
-        # Wait for GraphDB to start
-        cls._wait_for_graphdb()
+            cls.repository_id = repositories[0].get("id")
+            print(f"Using repository: {cls.repository_id}")
 
-        # Get repository
-        cls.repository_id = cls._get_repository()
-
-        # Load test data if needed
-        cls._load_test_data()
-
-        print(f"Setup complete. Using repository: {cls.repository_id}")
+        except requests.exceptions.ConnectionError:
+            raise RuntimeError(
+                "Cannot connect to GraphDB at localhost:7200. "
+                "Make sure Flyover setup has been run and GraphDB is running."
+            )
 
     @classmethod
     def tearDownClass(cls):
-        """Clean up by stopping GraphDB and removing Flyover clone."""
-        print(
-            f"=== Cleaning up at {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} ==="
-        )
-
-        # Stop GraphDB using docker-compose
-        if hasattr(cls, "flyover_path") and cls.flyover_path:
-            try:
-                # Change to the Flyover directory
-                original_dir = os.getcwd()
-                os.chdir(cls.flyover_path)
-
-                print("Stopping GraphDB service...")
-                compose_cmd = cls._get_compose_command()
-                if compose_cmd:
-                    # Use the correct compose command format
-                    if isinstance(compose_cmd, list):
-                        cmd = compose_cmd + ["stop", "rdf-store"]
-                    else:
-                        cmd = [compose_cmd, "stop", "rdf-store"]
-
-                    subprocess.run(
-                        cmd,
-                        check=False,  # Don't fail if already stopped
-                        stdout=subprocess.PIPE,
-                        stderr=subprocess.PIPE,
-                    )
-                    print("GraphDB service stopped")
-
-                # Return to original directory
-                os.chdir(original_dir)
-            except Exception as e:
-                print(f"Warning: Error during service cleanup: {e}")
-                print("You may need to manually clean up containers.")
-
-        # Remove temporary Flyover clone if we created one
-        if hasattr(cls, "temp_dir") and cls.temp_dir and os.path.exists(cls.temp_dir):
-            print(f"Removing temporary Flyover clone at: {cls.temp_dir}")
-            try:
-                shutil.rmtree(cls.temp_dir)
-                print("Temporary directory removed successfully")
-            except Exception as e:
-                print(f"Warning: Failed to remove temporary directory: {e}")
+        """Clean up - no longer handles Flyover cleanup as it's managed by fixtures."""
+        print(f"=== Test cleanup at {datetime.utcnow().strftime('%Y-%m-%d %H:%M:%S')} ===")
+        print("Note: Flyover cleanup is now handled by pytest fixtures")
 
     @classmethod
     def _verify_local_files(cls):
@@ -167,275 +120,6 @@ class TestVantage6RDF(unittest.TestCase):
                 )
 
             print("Non-critical files missing, continuing anyway.")
-
-    @classmethod
-    def _clone_flyover_repo(cls):
-        """Clone the Flyover repository to use its docker-compose."""
-        # Check if FLYOVER_PATH is set and valid
-        flyover_path = os.environ.get("FLYOVER_PATH")
-        if flyover_path and os.path.exists(flyover_path):
-            if os.path.exists(os.path.join(flyover_path, "docker-compose.yml")):
-                print(f"Using existing Flyover repository at: {flyover_path}")
-                cls.flyover_path = flyover_path
-                cls.temp_dir = None  # No temporary directory to clean up
-                return
-
-        # Create a temporary directory
-        cls.temp_dir = tempfile.mkdtemp(prefix="flyover-temp-")
-        cls.flyover_path = os.path.join(cls.temp_dir, "Flyover")
-
-        print(f"Creating temporary directory: {cls.temp_dir}")
-
-        # Clone repository
-        print("Cloning Flyover repository...")
-        try:
-            subprocess.run(
-                [
-                    "git",
-                    "clone",
-                    "https://github.com/MaastrichtU-CDS/Flyover.git",
-                    cls.flyover_path,
-                ],
-                check=True,
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-            )
-            print(f"Flyover repository cloned successfully to: {cls.flyover_path}")
-        except subprocess.CalledProcessError as e:
-            print(f"Failed to clone Flyover repository: {e}")
-            print(f"Error output: {e.stderr.decode() if hasattr(e, 'stderr') else ''}")
-            raise RuntimeError(
-                "Failed to clone Flyover repository. Make sure Git is installed and working."
-            )
-
-    @classmethod
-    def _get_compose_command(cls):
-        """Determine the correct docker-compose command to use."""
-        try:
-            # Check for docker-compose command
-            compose_cmd = "docker-compose"
-            result = subprocess.run(
-                [compose_cmd, "--version"],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-            )
-            if result.returncode == 0:
-                print(f"Using docker-compose: {result.stdout.strip()}")
-                return compose_cmd
-        except FileNotFoundError:
-            pass
-
-        try:
-            # Try docker compose command (newer Docker versions)
-            compose_cmd = ["docker", "compose"]
-            result = subprocess.run(
-                compose_cmd + ["--version"],
-                stdout=subprocess.PIPE,
-                stderr=subprocess.PIPE,
-                text=True,
-            )
-            if result.returncode == 0:
-                print(f"Using docker compose: {result.stdout.strip()}")
-                return compose_cmd
-        except FileNotFoundError:
-            pass
-
-        print("Docker Compose not found. Please install Docker Compose.")
-        raise RuntimeError("Docker Compose is required but not available")
-
-    @classmethod
-    def _start_graphdb_with_compose(cls):
-        """Start GraphDB using docker-compose from Flyover."""
-        if not cls.flyover_path:
-            raise RuntimeError("Flyover path not set. Cannot start GraphDB.")
-
-        # Get the appropriate compose command
-        compose_cmd = cls._get_compose_command()
-        if not compose_cmd:
-            raise RuntimeError("Docker Compose command not available")
-
-        try:
-            # Change to the Flyover directory
-            original_dir = os.getcwd()
-            os.chdir(cls.flyover_path)
-
-            # Check if docker-compose.yml exists
-            if not os.path.exists("docker-compose.yml"):
-                raise FileNotFoundError(
-                    f"docker-compose.yml not found in {cls.flyover_path}"
-                )
-
-            # Check if service is already running
-            if isinstance(compose_cmd, list):
-                ps_cmd = compose_cmd + ["ps", "rdf-store"]
-            else:
-                ps_cmd = [compose_cmd, "ps", "rdf-store"]
-
-            result = subprocess.run(
-                ps_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
-            )
-
-            if "Up" in result.stdout:
-                print("GraphDB service is already running")
-            else:
-                # Start only the GraphDB service
-                print("Starting GraphDB service using docker-compose...")
-
-                # Use the correct compose command format
-                if isinstance(compose_cmd, list):
-                    cmd = compose_cmd + ["up", "-d", "rdf-store"]
-                else:
-                    cmd = [compose_cmd, "up", "-d", "rdf-store"]
-
-                process = subprocess.run(
-                    cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True
-                )
-
-                if process.returncode != 0:
-                    print(f"Docker Compose output: {process.stdout}")
-                    print(f"Docker Compose error: {process.stderr}")
-                    raise RuntimeError("Failed to start GraphDB with docker-compose")
-
-                print("GraphDB service started using docker-compose")
-
-            # Return to original directory
-            os.chdir(original_dir)
-
-        except Exception as e:
-            # Make sure we return to the original directory even if there's an error
-            if "original_dir" in locals():
-                os.chdir(original_dir)
-            raise e
-
-    @classmethod
-    def _get_test_data_path(cls, filename):
-        """Get the path to a test data file, checking both test dir and project root."""
-        # Check current directory first
-        if os.path.exists(filename):
-            return filename
-
-        # Check test directory if we're not already in it
-        test_dir_path = os.path.join(PROJECT_ROOT, "test", filename)
-        if os.path.exists(test_dir_path):
-            return test_dir_path
-
-        # Check project root
-        project_root_path = os.path.join(PROJECT_ROOT, filename)
-        if os.path.exists(project_root_path):
-            return project_root_path
-
-        # File not found in any location
-        return None
-
-    @classmethod
-    def _wait_for_graphdb(cls, timeout=180):  # Extended timeout for startup
-        """Wait for GraphDB to be ready to accept connections."""
-        print("Waiting for GraphDB to start...")
-        start_time = time.time()
-        while True:
-            if time.time() - start_time > timeout:
-                raise TimeoutError(f"GraphDB didn't start within {timeout} seconds")
-
-            try:
-                response = requests.get("http://localhost:7200/rest/repositories")
-                if response.status_code == 200:
-                    print(
-                        f"GraphDB is up and running! (took {time.time() - start_time:.1f} seconds)"
-                    )
-                    time.sleep(5)  # Additional safety margin
-                    return
-            except requests.exceptions.ConnectionError:
-                pass
-
-            print(
-                f"Still waiting for GraphDB... ({int(time.time() - start_time)}s elapsed)"
-            )
-            time.sleep(5)
-
-    @classmethod
-    def _get_repository(cls):
-        """Get the first available repository or create a new one."""
-        response = requests.get("http://localhost:7200/rest/repositories")
-        if not response.ok:
-            raise RuntimeError(f"Failed to get list of repositories: {response.text}")
-
-        repositories = response.json()
-        if not repositories:
-            print("No repositories found. Creating a test repository...")
-            return cls._create_repository()
-
-        # List all available repositories
-        print("Available repositories:")
-        for repo in repositories:
-            repo_id = repo.get("id")
-            repo_title = repo.get("title", "No title")
-            print(f"  - {repo_id}: {repo_title}")
-
-        # Use the first repository
-        repo_id = repositories[0].get("id")
-        print(f"Using repository: {repo_id}")
-        return repo_id
-
-    @classmethod
-    def _create_repository(cls):
-        """Create a new test repository."""
-        config = {"id": "test-repo", "title": "Test Repository", "type": "free"}
-
-        response = requests.post("http://localhost:7200/rest/repositories", json=config)
-
-        if not response.ok:
-            raise RuntimeError(f"Failed to create repository: {response.text}")
-
-        print("Repository 'test-repo' created successfully")
-        return "test-repo"
-
-    @classmethod
-    def _load_test_data(cls):
-        """Load test data files into GraphDB."""
-        data_filenames = ["ontology.ttl", "data.ttl", "annotation.ttl"]
-
-        # Get repository endpoint
-        repo_endpoint = f"http://localhost:7200/repositories/{cls.repository_id}/"
-
-        # Find and load each file
-        files_loaded = False
-        for filename in data_filenames:
-            file_path = cls._get_test_data_path(filename)
-
-            if not file_path:
-                print(f"Warning: {filename} not found in any location. Skipping...")
-                continue
-
-            print(f"Loading {file_path}...")
-
-            content_type = {
-                ".owl": "application/rdf+xml",
-                ".ttl": "text/turtle",
-                ".nt": "application/n-triples",
-                ".nq": "application/n-quads",
-                ".trig": "application/trig",
-                ".jsonld": "application/ld+json",
-            }.get(Path(file_path).suffix, "text/turtle")
-
-            try:
-                subprocess.run(
-                    [
-                        "curl",
-                        "-X",
-                        "POST",
-                        "-H",
-                        "Content-Type: application/x-turtle",
-                        "--data-binary",
-                        f"@{filename}",
-                        f"{repo_endpoint}/rdf-graphs/service?graph=http://{filename[:filename.rfind('.')]}.local/",
-                    ]
-                )
-
-                print(f"Successfully loaded {file_path}")
-                files_loaded = True
-            except e as e:
-                print(f"Failed to load {file_path}: {e}")
 
     # ========== TEST CASES ==========
 
@@ -570,8 +254,8 @@ class TestVantage6RDF(unittest.TestCase):
 
         # Simple SPARQL query
         query = """
-        SELECT ?s ?p ?o WHERE { 
-            ?s ?p ?o . 
+        SELECT ?s ?p ?o WHERE {
+            ?s ?p ?o .
         } LIMIT 10
         """
 
@@ -660,7 +344,7 @@ class TestVantage6RDF(unittest.TestCase):
         PREFIX sct: <http://snomed.info/id/>
         PREFIX strongaya: <http://strongaya.eu/>
         PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
-        
+
         SELECT DISTINCT ?patient ?sub_class (SAMPLE(?value) AS ?any_value)
         WHERE {{
             ?patient sio:SIO_000008 ?sub_class_type .
