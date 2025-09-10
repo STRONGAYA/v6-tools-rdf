@@ -12,11 +12,16 @@ installed. This can be done by running:
     pip install vantage6-algorithm-tools
 """
 
+import sys
 from vantage6.algorithm.tools.mock_client import MockAlgorithmClient
 from pathlib import Path
 
 # Get path of current directory
 current_path = Path(__file__).parent
+
+# Add the mock algorithm to Python path so it can be imported
+mock_algorithm_path = current_path.parent / "mock_algorithm" / "v6-rdf-mock"
+sys.path.insert(0, str(mock_algorithm_path))
 
 # Mock client
 client = MockAlgorithmClient(
@@ -38,7 +43,7 @@ client = MockAlgorithmClient(
             }
         ],
     ],
-    module="v6-descriptive-statistics",
+    module="v6-rdf-mock",
 )
 
 # List mock organisations
@@ -51,7 +56,7 @@ central_task = client.task.create(
     input_={
         "method": "central_rdf_mock",
         "kwargs": {
-            "variables_to_extract": ["Variable_1", "Variable_2"],
+            "variables_to_extract": ["ncit:C28421", "ncit:C156420"],
         },
     },
     organizations=[org_ids[0]],
@@ -65,7 +70,7 @@ task = client.task.create(
         "method": "partial_rdf_mock",
         "kwargs": {
             "kwargs": {
-                "variables_to_extract": ["Variable_1", "Variable_2"],
+                "variables_to_extract": ["ncit:C28421", "ncit:C156420"],
             }
         },
     },
