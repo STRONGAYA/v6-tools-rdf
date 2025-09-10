@@ -24,7 +24,7 @@
 @prefix graphdb: <http://www.ontotext.com/config/graphdb#> .
 @prefix math: <http://www.w3.org/2005/xpath-functions/math> .
 @prefix omgeo: <http://www.ontotext.com/owlim/geo#> .
-@prefix db: <http://host.docker.internal/rdf/ontology/> .
+@prefix db: <http://data.local/rdf/ontology/> .
 
 dbo:TableRow a owl:Class .
 
@@ -67,71 +67,84 @@ dbo:schema a owl:AnnotationProperty;
 dbo:column a owl:AnnotationProperty;
   :domain dbo:ColumnCell .
 
-<http://data.local/rdf/ontology/HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020>
-  a owl:Class;
+db:synthetic_dutch_150 a owl:Class;
   :subClassOf dbo:TableRow;
-  :label "HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020";
-  dbo:table "HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020" .
+  :label "synthetic_dutch_150";
+  dbo:table "synthetic_dutch_150" .
 
-<http://data.local/rdf/ontology/HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020.id>
-  a owl:Class;
+db:synthetic_dutch_150.id a owl:Class;
   :subClassOf dbo:ColumnCell;
-  :label "HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020.id";
-  dbo:table <http://data.local/rdf/ontology/HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020>;
+  owl:equivalentClass "['Variable type: Identifier', 'Variable description: Identifier', 'Variable comment: No comment provided']";
+  :label "synthetic_dutch_150.id";
+  dbo:table db:synthetic_dutch_150;
   dbo:column "id" .
 
-<http://data.local/rdf/ontology/HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020.index_tumour_location>
-  a owl:Class;
+db:synthetic_dutch_150.geslacht a owl:Class;
   :subClassOf dbo:ColumnCell;
-  :label "HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020.index_tumour_location";
-  dbo:table <http://data.local/rdf/ontology/HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020>;
-  dbo:column "index_tumour_location" .
+  owl:equivalentClass "['Variable type: Categorical', 'Variable description: Biological sex', 'Variable comment: No comment provided', 'Category man: Male, comment: No comment provided,  count: 78', 'Category vrouw: Female, comment: No comment provided,  count: 70', 'Category : Missing Or Unspecified, comment: No comment provided,  count: 2']";
+  :label "synthetic_dutch_150.geslacht";
+  dbo:table db:synthetic_dutch_150;
+  dbo:column "geslacht" .
 
-<http://data.local/rdf/ontology/HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020.age_at_diagnosis>
-  a owl:Class;
+db:synthetic_dutch_150.leeftijd_diagnose a owl:Class;
   :subClassOf dbo:ColumnCell;
-  :label "HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020.age_at_diagnosis";
-  dbo:table <http://data.local/rdf/ontology/HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020>;
-  dbo:column "age_at_diagnosis" .
+  owl:equivalentClass "['Variable type: Continuous', 'Variable description: Age at diagnosis', 'Variable comment: No comment provided', 'No units specified', 'Category : missing_or_unspecified']";
+  :label "synthetic_dutch_150.leeftijd_diagnose";
+  dbo:table db:synthetic_dutch_150;
+  dbo:column "leeftijd_diagnose" .
 
-<http://data.local/rdf/ontology/HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020.clin_t>
-  a owl:Class;
+db:synthetic_dutch_150.ecog_status a owl:Class;
   :subClassOf dbo:ColumnCell;
-  :label "HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020.clin_t";
-  dbo:table <http://data.local/rdf/ontology/HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020>;
-  dbo:column "clin_t" .
+  owl:equivalentClass "['Variable type: Categorical', 'Variable description: Performance status', 'Variable comment: No comment provided', 'Category 1: 1, comment: No comment provided,  count: 34', 'Category 2: 2, comment: No comment provided,  count: 39', 'Category 3: , comment: No comment provided,  count: 24', 'Category 0: 0, comment: No comment provided,  count: 24', 'Category 4: , comment: No comment provided,  count: 20', 'Category 5: , comment: No comment provided,  count: 9']";
+  :label "synthetic_dutch_150.ecog_status";
+  dbo:table db:synthetic_dutch_150;
+  dbo:column "ecog_status" .
 
-<http://data.local/rdf/ontology/HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020.clin_n>
-  a owl:Class;
+db:synthetic_dutch_150.totaal_hpv_p16_status a owl:Class;
   :subClassOf dbo:ColumnCell;
-  :label "HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020.clin_n";
-  dbo:table <http://data.local/rdf/ontology/HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020>;
-  dbo:column "clin_n" .
+  owl:equivalentClass "['Variable type: Categorical', 'Variable description: Hpv status', 'Variable comment: No comment provided', 'Category positief: Positive, comment: No comment provided,  count: 78', 'Category negatief: Negative, comment: No comment provided,  count: 68', 'Category : Missing Or Unspecified, comment: No comment provided,  count: 4']";
+  :label "synthetic_dutch_150.totaal_hpv_p16_status";
+  dbo:table db:synthetic_dutch_150;
+  dbo:column "totaal_hpv_p16_status" .
 
-<http://data.local/rdf/ontology/HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020.clin_m>
-  a owl:Class;
+db:synthetic_dutch_150.tumor_locatie a owl:Class;
   :subClassOf dbo:ColumnCell;
-  :label "HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020.clin_m";
-  dbo:table <http://data.local/rdf/ontology/HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020>;
-  dbo:column "clin_m" .
+  owl:equivalentClass "['Variable type: Categorical', 'Variable description: Tumour location', 'Variable comment: No comment provided', 'Category orofarynx: Oropharynx, comment: No comment provided,  count: 80', 'Category larynx: Larynx, comment: No comment provided,  count: 70']";
+  :label "synthetic_dutch_150.tumor_locatie";
+  dbo:table db:synthetic_dutch_150;
+  dbo:column "tumor_locatie" .
 
-<http://data.local/rdf/ontology/HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020.overall_survival_in_days>
-  a owl:Class;
+db:synthetic_dutch_150.t_stad a owl:Class;
   :subClassOf dbo:ColumnCell;
-  :label "HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020.overall_survival_in_days";
-  dbo:table <http://data.local/rdf/ontology/HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020>;
-  dbo:column "overall_survival_in_days" .
+  owl:equivalentClass "['Variable type: Categorical', 'Variable description: T stage', 'Variable comment: No comment provided', 'Category 2: 2, comment: No comment provided,  count: 41', 'Category 3: 3, comment: No comment provided,  count: 35', 'Category 1: 1, comment: No comment provided,  count: 31', 'Category 4: 4, comment: No comment provided,  count: 23', 'Category 0: , comment: No comment provided,  count: 20']";
+  :label "synthetic_dutch_150.t_stad";
+  dbo:table db:synthetic_dutch_150;
+  dbo:column "t_stad" .
 
-<http://data.local/rdf/ontology/HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020.biological_sex>
-  a owl:Class;
+db:synthetic_dutch_150.n_stad a owl:Class;
   :subClassOf dbo:ColumnCell;
-  :label "HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020.biological_sex";
-  dbo:table <http://data.local/rdf/ontology/HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020>;
-  dbo:column "biological_sex" .
+  owl:equivalentClass "['Variable type: Categorical', 'Variable description: N stage', 'Variable comment: No comment provided', 'Category 1: 1, comment: No comment provided,  count: 41', 'Category 2: 2, comment: No comment provided,  count: 44', 'Category 3: 3, comment: No comment provided,  count: 31', 'Category 0: 0, comment: No comment provided,  count: 34']";
+  :label "synthetic_dutch_150.n_stad";
+  dbo:table db:synthetic_dutch_150;
+  dbo:column "n_stad" .
 
-<http://data.local/rdf/ontology/HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020.event_overall_survival>
-  a owl:Class;
+db:synthetic_dutch_150.m_stad a owl:Class;
   :subClassOf dbo:ColumnCell;
-  :label "HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020.event_overall_survival";
-  dbo:table <http://data.local/rdf/ontology/HEAD-NECK-RADIOMICS-HN1_Clinical_data_updated_July_2020>;
+  owl:equivalentClass "['Variable type: Categorical', 'Variable description: M stage', 'Variable comment: No comment provided', 'Category 0: 0, comment: No comment provided,  count: 116', 'Category 1: 1, comment: No comment provided,  count: 34']";
+  :label "synthetic_dutch_150.m_stad";
+  dbo:table db:synthetic_dutch_150;
+  dbo:column "m_stad" .
+
+db:synthetic_dutch_150.event_overall_survival a owl:Class;
+  :subClassOf dbo:ColumnCell;
+  owl:equivalentClass "['Variable type: Categorical', 'Variable description: Survival status', 'Variable comment: No comment provided', 'Category Levend: Alive, comment: No comment provided,  count: 88', 'Category Overleden: Dead, comment: No comment provided,  count: 62']";
+  :label "synthetic_dutch_150.event_overall_survival";
+  dbo:table db:synthetic_dutch_150;
   dbo:column "event_overall_survival" .
+
+db:synthetic_dutch_150.overall_survival_in_days a owl:Class;
+  :subClassOf dbo:ColumnCell;
+  owl:equivalentClass "['Variable type: Continuous', 'Variable description: Survival days', 'Variable comment: No comment provided', 'No units specified', 'Category : missing_or_unspecified']";
+  :label "synthetic_dutch_150.overall_survival_in_days";
+  dbo:table db:synthetic_dutch_150;
+  dbo:column "overall_survival_in_days" .
