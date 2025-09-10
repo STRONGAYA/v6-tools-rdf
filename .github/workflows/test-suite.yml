@@ -15,7 +15,7 @@ jobs:
     strategy:
       matrix:
         python-version: [ "3.10" ]
-        vantage6-version: [ "4.12" ]
+        vantage6-version: [ "4.11", "4.12" ]
     
     steps:
       - name: Checkout code
