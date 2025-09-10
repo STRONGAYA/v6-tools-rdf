@@ -6,7 +6,7 @@
 <a href="https://opensource.org/licenses/Apache-2.0"><img alt="Licence: Apache 2.0" src="https://img.shields.io/badge/Licence-Apache%202.0-blue.svg"></a>
 <br>
 <a href="https://github.com/vantage6/vantage6/"><img alt="Vantage6 4.11, 4.12" src="https://img.shields.io/badge/vantage6- 4.11 | 4.12-blue.svg"></a>
-<a href="https://github.com/MaastrichtU-CDS/Flyover"><img alt="Flyover version" src="https://img.shields.io/badge/Flyover%20Version-v2.0.2+-purple"></a>
+<a href="https://github.com/MaastrichtU-CDS/Flyover"><img alt="Flyover version 2.0+" src="https://img.shields.io/badge/Flyover%20Version-2.0+-purple"></a>
 <a href="https://strongaya.eu/wp-content/uploads/2025/07/algorithm_review_guidelines.pdf"><img alt="STRONG AYA Algorithm Guideline Conformity: v1.0.0 Pending" src="https://img.shields.io/badge/STRONG%20AYA%20Algorithm%20Guideline%20Conformity-v1.0.0%20pending-yellow"></a>
 <br>
 <a href="https://github.com/psf/black"><img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-000000.svg"></a>
