@@ -3,10 +3,3 @@
 # see 'extra_node_config_file' in confest.py for more details.
 docker_services:
     container_label: rdf-store
-policies:
-  allowed_algorithms:
-    # Developer network start-up test
-    - ^hello-world$
-    # v6-rdf-mock:ci-test
-    - ^v6-rdf-mock:ci-test$
-  require_algorithm_pull: false
