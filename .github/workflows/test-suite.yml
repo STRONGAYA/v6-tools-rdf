@@ -43,7 +43,7 @@ jobs:
 
       - name: Run tests with coverage
         run: |
-          pytest --cov=v6_descriptive_statistics --cov-report=term-missing --cov-report=html --cov-report=json
+          pytest --cov=v6_strongaya_rdf --cov-report=term-missing --cov-report=html --cov-report=json
 
       - name: Extract coverage percentage and create badge
         run: |
@@ -106,15 +106,15 @@ jobs:
 
       - name: Run Black code formatter check
         run: |
-          black --check --diff v6-descriptive-statistics/ tests/
+          black --check --diff src/ tests/
 
       - name: Run Flake8 linter
         run: |
-          flake8 v6-descriptive-statistics/ tests/ --max-line-length=120 --extend-ignore=E203,W503
+          flake8 src/ tests/ --max-line-length=120 --extend-ignore=E203,W503
 
       - name: Run MyPy type checker
         run: |
-           mypy src/vantage6_strongaya_general/ --ignore-missing-imports
+           mypy src/vantage6_strongaya_rdf/ --ignore-missing-imports
 
   security:
     runs-on: ubuntu-latest
