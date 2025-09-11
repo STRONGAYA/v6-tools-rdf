@@ -111,7 +111,7 @@ def _get_compose_command():
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
-            timeout=10
+            timeout=10,
         )
         if result.returncode == 0:
             print(f"Using docker-compose: {result.stdout.strip()}")
@@ -127,7 +127,7 @@ def _get_compose_command():
             stdout=subprocess.PIPE,
             stderr=subprocess.PIPE,
             text=True,
-            timeout=10
+            timeout=10,
         )
         if result.returncode == 0:
             print(f"Using docker compose: {result.stdout.strip()}")
@@ -182,8 +182,9 @@ def rdf_store(flyover_repository, docker_client):
         # Check for port conflicts
         try:
             import socket
+
             sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-            result = sock.connect_ex(('localhost', 7200))
+            result = sock.connect_ex(("localhost", 7200))
             sock.close()
             if result == 0:
                 print("Warning: Port 7200 is already in use")
@@ -196,9 +197,15 @@ def rdf_store(flyover_repository, docker_client):
         else:
             ps_cmd = [compose_cmd, "ps", "rdf-store"]
 
-        print(f"Checking if rdf-store service is running with command: {' '.join(ps_cmd)}")
+        print(
+            f"Checking if rdf-store service is running with command: {' '.join(ps_cmd)}"
+        )
         result = subprocess.run(
-            ps_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=30
+            ps_cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=30,
         )
 
         print(f"Service check result - Return code: {result.returncode}")
@@ -217,7 +224,11 @@ def rdf_store(flyover_repository, docker_client):
 
             print(f"Starting service with command: {' '.join(cmd)}")
             process = subprocess.run(
-                cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=300
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                timeout=300,
             )
 
             print(f"Start command return code: {process.returncode}")
@@ -225,7 +236,7 @@ def rdf_store(flyover_repository, docker_client):
             print(f"Start command stderr: {process.stderr}")
 
             if process.returncode != 0:
-                print(f"Docker Compose failed to start rdf-store service")
+                print("Docker Compose failed to start rdf-store service")
                 print(f"Working directory: {os.getcwd()}")
                 print(f"Compose file exists: {os.path.exists('docker-compose.yml')}")
 
@@ -237,7 +248,11 @@ def rdf_store(flyover_repository, docker_client):
 
                 try:
                     logs_result = subprocess.run(
-                        logs_cmd, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True, timeout=30
+                        logs_cmd,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        text=True,
+                        timeout=30,
                     )
                     print(f"Service logs: {logs_result.stdout}")
                 except Exception as e:
@@ -276,6 +291,7 @@ def rdf_store(flyover_repository, docker_client):
         print(f"Error during RDF-store setup: {e}")
         print(f"Error type: {type(e)}")
         import traceback
+
         print(f"Traceback: {traceback.format_exc()}")
         pytest.skip(f"Failed to set up RDF-store: {e}")
 
@@ -298,7 +314,7 @@ def rdf_store(flyover_repository, docker_client):
                 check=False,  # Don't fail if already stopped
                 stdout=subprocess.PIPE,
                 stderr=subprocess.PIPE,
-                timeout=60
+                timeout=60,
             )
             print("GraphDB service stopped")
 
@@ -318,8 +334,10 @@ def _wait_for_graphdb(timeout=180):
             raise TimeoutError(f"GraphDB didn't start within {timeout} seconds")
 
         try:
-            print(f"Attempting to connect to GraphDB at http://localhost:7200...")
-            response = requests.get("http://localhost:7200/rest/repositories", timeout=10)
+            print("Attempting to connect to GraphDB at http://localhost:7200...")
+            response = requests.get(
+                "http://localhost:7200/rest/repositories", timeout=10
+            )
             print(f"GraphDB response status: {response.status_code}")
             if response.status_code == 200:
                 print(
@@ -762,11 +780,15 @@ def vantage6_network_session(docker_client, extra_node_config_file, rdf_store):
 
         # Verify RDF store is still accessible after Vantage6 startup
         try:
-            response = requests.get("http://localhost:7200/rest/repositories", timeout=5)
+            response = requests.get(
+                "http://localhost:7200/rest/repositories", timeout=5
+            )
             if response.status_code == 200:
                 print("RDF store confirmed accessible after Vantage6 startup")
             else:
-                print(f"Warning: RDF store check returned status {response.status_code}")
+                print(
+                    f"Warning: RDF store check returned status {response.status_code}"
+                )
         except Exception as e:
             print(f"Warning: Could not verify RDF store after Vantage6 startup: {e}")
 
