@@ -4,23 +4,26 @@ from vantage6.algorithm.tools.decorators import algorithm_client
 from vantage6.algorithm.client import AlgorithmClient
 
 from vantage6_strongaya_general.miscellaneous import collect_organisation_ids, safe_log
-from vantage6_strongaya_rdf.miscellaneous import check_input_structure
 
 
 @algorithm_client
-def central_rdf_mock(client: AlgorithmClient, variables_to_extract: List[str]) -> Any:
+def central_rdf_mock(
+    client: AlgorithmClient, variables_to_extract: List[str], query_type: str
+) -> Any:
     """
+    THIS FUNCTION IS FOR MOCK ALGORITHM CLIENT SUPPORT ONLY. DO NOT USE FOR TESTING.
     Central coordination function for the RDF mock algorithm.
-    
-    This function orchestrates the federated RDF data extraction process by 
-    distributing subtasks to participating organisations and collecting their 
-    results. It serves as a demonstration algorithm for testing RDF-based 
+
+    This function orchestrates the federated RDF data extraction process by
+    distributing subtasks to participating organisations and collecting their
+    results. It serves as a demonstration algorithm for testing RDF-based
     federated learning infrastructure.
-    
+
     Args:
         client: Vantage6 algorithm client for task coordination
         variables_to_extract: List of variable identifiers to extract from RDF stores
-        
+        query_type: Type of SPARQL query to be used
+
     Returns:
         Aggregated results from all participating organisations
     """
@@ -33,6 +36,7 @@ def central_rdf_mock(client: AlgorithmClient, variables_to_extract: List[str]) -
         "method": "partial_rdf_mock",
         "kwargs": {
             "variables_to_extract": variables_to_extract,
+            "query_type": query_type,
         },
     }
 

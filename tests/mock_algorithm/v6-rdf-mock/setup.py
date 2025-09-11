@@ -11,7 +11,9 @@ with open(path.join(here, "README.md"), encoding="utf-8") as f:
 setup(
     name="v6-rdf-mock",
     version="1.0.0",
-    description="A very basic and not privacy enhancing mock algorithm that checks whether the RDF-endpoint is accessible and the vantage6_strongaya_rdf tools are working. Stripped down algorithm, not to be used elsewhere.",
+    description="A very basic and not privacy enhancing mock algorithm that checks whether "
+    "the RDF-endpoint is accessible and the vantage6_strongaya_rdf tools are working. "
+    "Stripped down algorithm, not to be used elsewhere.",
     long_description=long_description,
     long_description_content_type="text/markdown",
     packages=find_packages(),

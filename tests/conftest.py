@@ -12,17 +12,9 @@ import subprocess
 import tempfile
 import shutil
 import requests
-from datetime import datetime
 
+from vantage6.client import UserClient as Client
 from pathlib import Path
-
-# Optional import for vantage6 - only needed for vantage6 integration tests
-try:
-    from vantage6.client import UserClient as Client
-    VANTAGE6_AVAILABLE = True
-except ImportError:
-    Client = None
-    VANTAGE6_AVAILABLE = False
 
 
 @pytest.fixture(scope="session")
@@ -56,6 +48,7 @@ def docker_client():
 
 
 # ========== RDF-store setup fixtures using Flyover ==========
+
 
 @pytest.fixture(scope="session")
 def flyover_repository():
@@ -215,7 +208,7 @@ def rdf_store(flyover_repository, docker_client):
         yield {
             "repository_id": repository_id,
             "endpoint": f"http://localhost:7200/repositories/{repository_id}",
-            "base_url": "http://localhost:7200"
+            "base_url": "http://localhost:7200",
         }
 
     except Exception as e:
@@ -333,7 +326,7 @@ def _load_test_data(repository_id):
 
         print(f"Loading {file_path}...")
 
-        content_type = {
+        content_type = {  # noqa: F841
             ".owl": "application/rdf+xml",
             ".ttl": "text/turtle",
             ".nt": "application/n-triples",
@@ -344,12 +337,10 @@ def _load_test_data(repository_id):
 
         try:
             # Use requests to upload the file instead of curl subprocess
-            with open(file_path, 'rb') as f:
+            with open(file_path, "rb") as f:
                 data = f.read()
 
-            headers = {
-                "Content-Type": "application/x-turtle"
-            }
+            headers = {"Content-Type": "application/x-turtle"}
 
             graph_url = f"{repo_endpoint}rdf-graphs/service?graph=http://{filename.replace('.ttl', '')}.local/"
 
@@ -359,7 +350,9 @@ def _load_test_data(repository_id):
                 print(f"Successfully loaded {file_path}")
                 files_loaded = True
             else:
-                print(f"Failed to load {file_path}: {response.status_code} - {response.text}")
+                print(
+                    f"Failed to load {file_path}: {response.status_code} - {response.text}"
+                )
         except Exception as e:
             print(f"Failed to load {file_path}: {e}")
 
@@ -579,9 +572,7 @@ def vantage6_network_session(docker_client, extra_node_config_file):
         store_config_path = data_directory / "additional_vantage6_store_config.yaml"
 
         # Define dataset paths and names
-        datasets = [
-            ("rdf_store", data_directory / "rdf_store.csv")
-        ]
+        datasets = [("rdf_store", data_directory / "rdf_store.csv")]
 
         # Create and start a demo network with extra node config
         print("Creating demo network: algorithm-ci-test.")
@@ -600,6 +591,8 @@ def vantage6_network_session(docker_client, extra_node_config_file):
             str(server_config_path),
             "--extra-store-config",
             str(store_config_path),
+            "--num-nodes",  # For the RDF-tools we only test partial and 1 organisation is enough
+            "1",
         ]
 
         # Add datasets dynamically

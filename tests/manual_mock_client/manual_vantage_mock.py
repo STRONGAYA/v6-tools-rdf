@@ -24,12 +24,13 @@ current_path = Path(__file__).parent
 repo_root = current_path.parent.parent
 print("Checking whether v6-tools-rdf is importable...")
 try:
-    import vantage6_strongaya_rdf
+    import vantage6_strongaya_rdf  # noqa: F401
 
     print("v6-tools-rdf is already installed.")
 except ImportError:
     print(
-        "v6-tools-rdf not found, please install it using 'pip install -e .' in the directory that contains the 'pyproject.toml' file."
+        "v6-tools-rdf not found, please install it using 'pip install -e .' "
+        "in the directory that contains the 'pyproject.toml' file."
     )
 
 # Add the mock algorithm to Python path so it can be imported
