@@ -14,13 +14,7 @@ import requests  # type: ignore
 from io import StringIO
 from typing import Any, Dict, List, Union, Optional
 
-# Make vantage6 imports optional for unit testing
-try:
-    from vantage6.algorithm.tools.exceptions import AlgorithmError
-except ImportError:
-    # Fallback implementation for unit testing
-    class AlgorithmError(Exception):
-        pass
+from vantage6.algorithm.tools.exceptions import AlgorithmError
 
 
 def post_sparql_query(

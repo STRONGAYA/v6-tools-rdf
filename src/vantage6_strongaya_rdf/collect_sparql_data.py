@@ -14,38 +14,13 @@ import pandas as pd
 from importlib import resources
 from typing import List
 
-# Make vantage6 imports optional for unit testing
-try:
-    from vantage6.algorithm.tools.exceptions import (
-        DataError,
-        UserInputError,
-        AlgorithmError,
-    )
-    from vantage6.algorithm.tools.util import get_env_var
-    VANTAGE6_AVAILABLE = True
-except ImportError:
-    # Fallback implementations for unit testing
-    class DataError(Exception):
-        pass
-
-    class UserInputError(Exception):
-        pass
-
-    class AlgorithmError(Exception):
-        pass
-
-    def get_env_var(name, default=None):
-        import os
-        return os.environ.get(name, default)
-
-    VANTAGE6_AVAILABLE = False
-
-try:
-    from vantage6_strongaya_general.miscellaneous import safe_log
-except ImportError:
-    # Fallback implementation for unit testing
-    def safe_log(message, level="info"):
-        print(f"[{level.upper()}] {message}")
+from vantage6.algorithm.tools.exceptions import (
+    DataError,
+    UserInputError,
+    AlgorithmError,
+)
+from vantage6.algorithm.tools.util import get_env_var
+from vantage6_strongaya_general.miscellaneous import safe_log
 
 from .sparql_client import post_sparql_query
 from .data_processing import extract_subclass_info

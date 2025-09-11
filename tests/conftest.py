@@ -13,14 +13,7 @@ import tempfile
 import shutil
 import requests
 
-# Make vantage6 import optional to allow unit tests to run without it
-try:
-    from vantage6.client import UserClient as Client
-    VANTAGE6_AVAILABLE = True
-except ImportError:
-    Client = None
-    VANTAGE6_AVAILABLE = False
-
+from vantage6.client import UserClient as Client
 from pathlib import Path
 
 
@@ -815,7 +808,7 @@ def vantage6_network_session(docker_client, extra_node_config_file, rdf_store):
 
 
 @pytest.fixture(scope="session")
-def authentication(vantage6_network_session, docker_client, rdf_store):
+def authentication(vantage6_network_session, docker_client, rdf_store) -> Client:
     """
     This function authenticates a client.
 
@@ -829,9 +822,6 @@ def authentication(vantage6_network_session, docker_client, rdf_store):
     Returns:
         Client: An authenticated client with encryption set up.
     """
-    if not VANTAGE6_AVAILABLE:
-        pytest.skip("Vantage6 not available - cannot authenticate")
-
     # Ensure both the network and RDF store are running before attempting authentication
     if vantage6_network_session["status"] != "running":
         pytest.skip("Vantage6 network is not running - cannot authenticate")

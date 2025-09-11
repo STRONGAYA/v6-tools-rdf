@@ -9,43 +9,15 @@ import pandas as pd
 from json import JSONDecodeError
 from io import StringIO
 from typing import Any, Dict, List
-
-# Make vantage6 imports optional for cases where vantage6 is not available
-try:
-    from vantage6.algorithm.tools.exceptions import (
-        DataError,
-        UserInputError,
-        CollectResultsError,
-        PrivacyThresholdViolation,
-        InputError,
-        AlgorithmError,
-        CollectOrganizationError,
-    )
-    VANTAGE6_AVAILABLE = True
-except ImportError:
-    # Fallback implementations for when vantage6 is not available
-    class DataError(Exception):
-        pass
-
-    class UserInputError(Exception):
-        pass
-
-    class CollectResultsError(Exception):
-        pass
-
-    class PrivacyThresholdViolation(Exception):
-        pass
-
-    class InputError(Exception):
-        pass
-
-    class AlgorithmError(Exception):
-        pass
-
-    class CollectOrganizationError(Exception):
-        pass
-
-    VANTAGE6_AVAILABLE = False
+from vantage6.algorithm.tools.exceptions import (
+    DataError,
+    UserInputError,
+    CollectResultsError,
+    PrivacyThresholdViolation,
+    InputError,
+    AlgorithmError,
+    CollectOrganizationError,
+)
 
 
 @pytest.fixture
