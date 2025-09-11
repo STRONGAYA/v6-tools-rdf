@@ -114,7 +114,7 @@ jobs:
 
       - name: Run MyPy type checker
         run: |
-          mypy src/vantage6_strongaya_general/ --ignore-missing-imports
+          mypy src/vantage6_strongaya_rdf/ --ignore-missing-imports
 
   security:
     runs-on: ubuntu-latest
