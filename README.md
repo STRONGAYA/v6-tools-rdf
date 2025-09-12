@@ -53,13 +53,13 @@ algorithm.
 For the `requirements.txt` file, you can add the following line to the file:
 
 ```
-git+https://github.com/STRONGAYA/v6-tools-rdf.git@v0.1.3
+git+https://github.com/STRONGAYA/v6-tools-rdf.git@v1.0.0
 ```
 
 For the `setup.py` file, you can add the following line to the `install_requires` list:
 
 ```python
-        "vantage6-strongaya-rdf @ git+https://github.com/STRONGAYA/v6-tools-rdf.git@v0.1.3",
+        "vantage6-strongaya-rdf @ git+https://github.com/STRONGAYA/v6-tools-rdf.git@v1.0.0",
 ```
 
 The algorithm's `setup.py`, particularly the `install_requirements`, section file should then look something like this:
@@ -86,7 +86,7 @@ setup(
         'vantage6-algorithm-tools',
         'numpy',
         'pandas',
-        "vantage6-strongaya-rdf @ git+https://github.com/STRONGAYA/v6-tools-rdf.git@v0.1.3"
+        "vantage6-strongaya-rdf @ git+https://github.com/STRONGAYA/v6-tools-rdf.git@v1.0.0"
         # other dependencies
     ]
 )
