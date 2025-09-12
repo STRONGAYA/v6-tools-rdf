@@ -13,12 +13,96 @@ import pandas as pd
 
 from importlib import resources
 from typing import List
-from vantage6.algorithm.tools.util import get_env_var
 
+from vantage6.algorithm.tools.exceptions import (
+    DataError,
+    UserInputError,
+    AlgorithmError,
+)
+from vantage6.algorithm.tools.util import get_env_var
 from vantage6_strongaya_general.miscellaneous import safe_log
 
 from .sparql_client import post_sparql_query
-from .data_processing import add_missing_data_info, extract_subclass_info
+from .data_processing import extract_subclass_info
+
+NAUGHTY_WORD_LIST = [
+    "DROP",
+    "DELETE",
+    "INSERT",
+    "UPDATE",
+    "CLEAR",
+    "CREATE",
+    "LOAD",
+    "COPY",
+    "MOVE",
+    "ADD",
+    "UNION",
+    "SERVICE",
+    "BIND",
+    "FILTER",
+    "OPTIONAL",
+    "GRAPH",
+    "CONSTRUCT",
+    "DESCRIBE",
+    "WITH",
+    "INTO",
+    "USING",
+    "MINUS",
+    "EXISTS",
+    "NOT EXISTS",
+    "FROM",
+    "FROM NAMED",
+    "OFFSET",
+    "LIMIT",
+    "ORDER BY",
+    "GROUP BY",
+    "HAVING",
+    "DISTINCT",
+    "REDUCED",
+    "BINDINGS",
+    "UNDEFINED",
+    "LANGMATCHES",
+    "DATATYPE",
+    "BOUND",
+    "IRI",
+    "URI",
+    "BNODE",
+    "STR",
+    "LANG",
+    "ISIRI",
+    "ISURI",
+    "ISBLANK",
+    "ISLITERAL",
+    "REGEX",
+    "SUBSTR",
+    "REPLACE",
+    "CONCAT",
+    "LENGTH",
+    "STRSTARTS",
+    "STRENDS",
+    "CONTAINS",
+    "AUC",
+    "COUNT",
+    "SUM",
+    "MIN",
+    "MAX",
+    "AVG",
+    "SAMPLE",
+    "GROUP_CONCAT",
+    "SEPARATOR",
+    "NOT IN",
+    "IN",
+    "COALESCE",
+    "IF",
+    "STRLANG",
+    "STRDT",
+    "isLiteral",
+    "RAND",
+    "ABS",
+    "ROUND",
+    "CEIL",
+    "FLOOR",
+]
 
 
 def _load_query_template(query_name: str) -> str:
@@ -34,7 +118,7 @@ def _load_query_template(query_name: str) -> str:
     try:
         with (
             resources.files("vantage6_strongaya_rdf")
-            .joinpath(f"query_templates")
+            .joinpath("query_templates")
             .joinpath(f"{query_name}.rq")
             .open("r") as file
         ):
@@ -66,6 +150,15 @@ def _process_variable_query(
         .replace("PLACEHOLDER_PREDICATE", variable_property)
     )
 
+    # Check for naughty words in the input variables
+    if any(
+        word in (variable, ontology_part, variable_property)
+        for word in NAUGHTY_WORD_LIST
+    ):
+        raise UserInputError(
+            "Potentially dangerous input detected in variable, ontology part, or variable property."
+        )
+
     safe_log("info", f"Posting SPARQL query for {variable}.")
     result = post_sparql_query(endpoint=endpoint, query=query)
 
@@ -74,7 +167,8 @@ def _process_variable_query(
         result_df.drop(columns=["patient"], inplace=True)
         result_df["patient_id"] = result_df.index
         return extract_subclass_info(result_df, variable)
-    return pd.DataFrame(columns=[variable])
+    else:
+        raise DataError(f"No data retrieved for variable {variable}.")
 
 
 def collect_sparql_data(
@@ -113,8 +207,7 @@ def collect_sparql_data(
     if query_type == "single_column":
         query_template = _load_query_template("single_column")
     else:
-        safe_log("error", f"Unknown query type: {query_type}.")
-        return pd.DataFrame(columns=variables_to_describe)
+        raise UserInputError(f"Unknown query type: {query_type}.")
 
     intermediate_df = pd.DataFrame(columns=["patient_id", "sub_class", "value"])
 
@@ -131,14 +224,12 @@ def collect_sparql_data(
                         intermediate_df, result_df, on="patient_id", how="outer"
                     )
         except Exception as e:
-            safe_log("error", f"Error processing {variable}: {e}")
-            continue
+            raise AlgorithmError("error", f"Error processing {variable}: {e}")
 
     # add_missing_data_info(intermediate_df, missing_data_notation)
     intermediate_df = intermediate_df.replace(missing_data_notation, pd.NA)
 
-    return (
-        intermediate_df
-        if not intermediate_df.empty
-        else pd.DataFrame(columns=variables_to_describe)
-    )
+    if not intermediate_df.empty:
+        return intermediate_df
+    else:
+        raise DataError("No data retrieved from SPARQL endpoint.")

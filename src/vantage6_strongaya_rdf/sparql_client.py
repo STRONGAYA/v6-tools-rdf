@@ -9,19 +9,19 @@ File organisation:
 
 import csv
 import json
-import requests
+import requests  # type: ignore
 
 from io import StringIO
-from typing import Any, Dict, List, Union
+from typing import Any, Dict, List, Union, Optional
 
-from vantage6_strongaya_general.miscellaneous import safe_log
+from vantage6.algorithm.tools.exceptions import AlgorithmError
 
 
 def post_sparql_query(
     endpoint: str,
     query: str,
     request_type: str = "query",
-    headers: Dict[str, str] = None,
+    headers: Optional[Dict[str, str]] = None,
 ) -> Union[str, List[Dict[str, Any]], Dict[Any, Any]]:
     """
     Send a POST request to the specified endpoint with the given query.
@@ -40,10 +40,9 @@ def post_sparql_query(
     data = {request_type: query}
     response = requests.post(endpoint, data=data, headers=headers)
     if response.status_code != 200:
-        safe_log(
-            "error", f"SPARQL request failed with status code {response.status_code}."
+        raise AlgorithmError(
+            f"SPARQL request failed with status code {response.status_code}."
         )
-        return {}
 
     try:
         return json.loads(response.text)
@@ -53,8 +52,6 @@ def post_sparql_query(
             reader = csv.DictReader(file_like_object)
             return list(reader)
         except Exception as e:
-            safe_log(
-                "warn",
+            raise AlgorithmError(
                 f"SPARQL request did not return a valid JSON or CSV, error: {e}.",
             )
-            return response.text

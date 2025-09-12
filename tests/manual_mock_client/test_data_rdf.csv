@@ -1,2 +1,2 @@
 endpoint
-http://rdf-store:7200/repositories/userRepo
+http://localhost:7200/repositories/userRepo

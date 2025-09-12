@@ -9,6 +9,9 @@ import time
 import json
 import platform
 import subprocess
+import tempfile
+import shutil
+import requests
 
 from vantage6.client import UserClient as Client
 from pathlib import Path
@@ -44,45 +47,474 @@ def docker_client():
         pytest.skip("Docker not available")
 
 
+# ========== RDF-store setup fixtures using Flyover ==========
+
+
+@pytest.fixture(scope="session")
+def flyover_repository():
+    """Clone or use existing Flyover repository for GraphDB setup."""
+    # Check if FLYOVER_PATH is set and valid
+    flyover_path = os.environ.get("FLYOVER_PATH")
+    if flyover_path and os.path.exists(flyover_path):
+        if os.path.exists(os.path.join(flyover_path, "docker-compose.yml")):
+            print(f"Using existing Flyover repository at: {flyover_path}")
+            yield {"path": flyover_path, "temp_dir": None}
+            return
+
+    # Create a temporary directory
+    temp_dir = tempfile.mkdtemp(prefix="flyover-temp-")
+    flyover_path = os.path.join(temp_dir, "Flyover")
+
+    print(f"Creating temporary directory: {temp_dir}")
+    print("Cloning Flyover repository...")
+
+    try:
+        subprocess.run(
+            [
+                "git",
+                "clone",
+                "https://github.com/MaastrichtU-CDS/Flyover.git",
+                flyover_path,
+            ],
+            check=True,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+        )
+        print(f"Flyover repository cloned successfully to: {flyover_path}")
+
+        yield {"path": flyover_path, "temp_dir": temp_dir}
+
+    except subprocess.CalledProcessError as e:
+        print(f"Failed to clone Flyover repository: {e}")
+        pytest.skip("Failed to clone Flyover repository. Make sure Git is available.")
+
+    finally:
+        # Clean up temporary directory if we created one
+        if temp_dir and os.path.exists(temp_dir):
+            print(f"Removing temporary Flyover clone at: {temp_dir}")
+            try:
+                shutil.rmtree(temp_dir)
+                print("Temporary directory removed successfully")
+            except Exception as e:
+                print(f"Warning: Failed to remove temporary directory: {e}")
+
+
+def _get_compose_command():
+    """Determine the correct docker-compose command to use."""
+    print("Detecting docker-compose command...")
+
+    try:
+        # Check for docker-compose command
+        compose_cmd = "docker-compose"
+        result = subprocess.run(
+            [compose_cmd, "--version"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=10,
+        )
+        if result.returncode == 0:
+            print(f"Using docker-compose: {result.stdout.strip()}")
+            return compose_cmd
+    except (FileNotFoundError, subprocess.TimeoutExpired) as e:
+        print(f"docker-compose not found or timed out: {e}")
+
+    try:
+        # Try docker compose command (newer Docker versions)
+        compose_cmd = ["docker", "compose"]
+        result = subprocess.run(
+            compose_cmd + ["--version"],
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=10,
+        )
+        if result.returncode == 0:
+            print(f"Using docker compose: {result.stdout.strip()}")
+            return compose_cmd
+    except (FileNotFoundError, subprocess.TimeoutExpired) as e:
+        print(f"docker compose not found or timed out: {e}")
+
+    print("Docker Compose not found. Please install Docker Compose.")
+    raise RuntimeError("Docker Compose is required but not available")
+
+
+@pytest.fixture(scope="session")
+def rdf_store(flyover_repository, docker_client):
+    """Start GraphDB RDF-store using Flyover's docker-compose."""
+    flyover_info = flyover_repository
+    flyover_path = flyover_info["path"]
+
+    if not flyover_path:
+        pytest.skip("Flyover path not available. Cannot start RDF-store.")
+
+    print(f"Setting up RDF store using Flyover at: {flyover_path}")
+
+    # Get the appropriate compose command
+    try:
+        compose_cmd = _get_compose_command()
+    except RuntimeError as e:
+        pytest.skip(str(e))
+
+    # Start GraphDB service
+    try:
+        # Change to the Flyover directory
+        original_dir = os.getcwd()
+        print(f"Changing directory from {original_dir} to {flyover_path}")
+        os.chdir(flyover_path)
+
+        # Check if docker-compose.yml exists
+        compose_file = os.path.join(flyover_path, "docker-compose.yml")
+        if not os.path.exists(compose_file):
+            print(f"docker-compose.yml not found at: {compose_file}")
+            print(f"Directory contents: {os.listdir(flyover_path)}")
+            pytest.skip(f"docker-compose.yml not found in {flyover_path}")
+
+        print(f"Found docker-compose.yml at: {compose_file}")
+
+        # Check if Docker daemon is running
+        try:
+            docker_client.ping()
+            print("Docker daemon is running")
+        except Exception as e:
+            pytest.skip(f"Docker daemon not accessible: {e}")
+
+        # Check for port conflicts
+        try:
+            import socket
+
+            sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+            result = sock.connect_ex(("localhost", 7200))
+            sock.close()
+            if result == 0:
+                print("Warning: Port 7200 is already in use")
+        except Exception as e:
+            print(f"Could not check port 7200: {e}")
+
+        # Check if service is already running
+        if isinstance(compose_cmd, list):
+            ps_cmd = compose_cmd + ["ps", "rdf-store"]
+        else:
+            ps_cmd = [compose_cmd, "ps", "rdf-store"]
+
+        print(
+            f"Checking if rdf-store service is running with command: {' '.join(ps_cmd)}"
+        )
+        result = subprocess.run(
+            ps_cmd,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.PIPE,
+            text=True,
+            timeout=30,
+        )
+
+        print(f"Service check result - Return code: {result.returncode}")
+        print(f"Service check stdout: {result.stdout}")
+        print(f"Service check stderr: {result.stderr}")
+
+        if "Up" not in result.stdout:
+            # Start only the GraphDB service
+            print("Starting GraphDB service using docker-compose...")
+
+            # Use the correct compose command format
+            if isinstance(compose_cmd, list):
+                cmd = compose_cmd + ["up", "-d", "rdf-store"]
+            else:
+                cmd = [compose_cmd, "up", "-d", "rdf-store"]
+
+            print(f"Starting service with command: {' '.join(cmd)}")
+            process = subprocess.run(
+                cmd,
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                text=True,
+                timeout=300,
+            )
+
+            print(f"Start command return code: {process.returncode}")
+            print(f"Start command stdout: {process.stdout}")
+            print(f"Start command stderr: {process.stderr}")
+
+            if process.returncode != 0:
+                print("Docker Compose failed to start rdf-store service")
+                print(f"Working directory: {os.getcwd()}")
+                print(f"Compose file exists: {os.path.exists('docker-compose.yml')}")
+
+                # Try to get more detailed information
+                if isinstance(compose_cmd, list):
+                    logs_cmd = compose_cmd + ["logs", "rdf-store"]
+                else:
+                    logs_cmd = [compose_cmd, "logs", "rdf-store"]
+
+                try:
+                    logs_result = subprocess.run(
+                        logs_cmd,
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE,
+                        text=True,
+                        timeout=30,
+                    )
+                    print(f"Service logs: {logs_result.stdout}")
+                except Exception as e:
+                    print(f"Could not get service logs: {e}")
+
+                pytest.skip("Failed to start GraphDB with docker-compose")
+
+            print("GraphDB service started using docker-compose")
+        else:
+            print("GraphDB service is already running")
+
+        # Return to original directory
+        os.chdir(original_dir)
+
+        # Wait for GraphDB to be ready
+        _wait_for_graphdb()
+
+        # Get or create repository
+        repository_id = _get_or_create_repository()
+
+        # Load test data
+        _load_test_data(repository_id)
+
+        yield {
+            "repository_id": repository_id,
+            "endpoint": f"http://localhost:7200/repositories/{repository_id}",
+            "base_url": "http://localhost:7200",
+        }
+
+    except subprocess.TimeoutExpired as e:
+        pytest.skip(f"Timeout during RDF-store setup: {e}")
+    except Exception as e:
+        # Make sure we return to the original directory even if there's an error
+        if "original_dir" in locals():
+            os.chdir(original_dir)
+        print(f"Error during RDF-store setup: {e}")
+        print(f"Error type: {type(e)}")
+        import traceback
+
+        print(f"Traceback: {traceback.format_exc()}")
+        pytest.skip(f"Failed to set up RDF-store: {e}")
+
+    finally:
+        # Clean up: stop GraphDB service
+        try:
+            if "original_dir" in locals():
+                original_dir = os.getcwd()
+                os.chdir(flyover_path)
+
+            print("Stopping GraphDB service...")
+            # Use the correct compose command format
+            if isinstance(compose_cmd, list):
+                cmd = compose_cmd + ["stop", "rdf-store"]
+            else:
+                cmd = [compose_cmd, "stop", "rdf-store"]
+
+            subprocess.run(
+                cmd,
+                check=False,  # Don't fail if already stopped
+                stdout=subprocess.PIPE,
+                stderr=subprocess.PIPE,
+                timeout=60,
+            )
+            print("GraphDB service stopped")
+
+            # Return to original directory
+            if "original_dir" in locals():
+                os.chdir(original_dir)
+        except Exception as e:
+            print(f"Warning: Error during RDF-store cleanup: {e}")
+
+
+def _wait_for_graphdb(timeout=180):
+    """Wait for GraphDB to be ready to accept connections."""
+    print("Waiting for GraphDB to start...")
+    start_time = time.time()
+    while True:
+        if time.time() - start_time > timeout:
+            raise TimeoutError(f"GraphDB didn't start within {timeout} seconds")
+
+        try:
+            print("Attempting to connect to GraphDB at http://localhost:7200...")
+            response = requests.get(
+                "http://localhost:7200/rest/repositories", timeout=10
+            )
+            print(f"GraphDB response status: {response.status_code}")
+            if response.status_code == 200:
+                print(
+                    f"GraphDB is up and running! (took {time.time() - start_time:.1f} seconds)"
+                )
+                time.sleep(5)  # Additional safety margin
+                return
+        except requests.exceptions.ConnectionError as e:
+            print(f"Connection error (this is normal during startup): {e}")
+        except requests.exceptions.Timeout as e:
+            print(f"Timeout connecting to GraphDB: {e}")
+        except Exception as e:
+            print(f"Unexpected error connecting to GraphDB: {e}")
+
+        elapsed = int(time.time() - start_time)
+        print(f"Still waiting for GraphDB... ({elapsed}s elapsed)")
+        time.sleep(5)
+
+
+def _get_or_create_repository():
+    """Get the first available repository or create a new one."""
+    response = requests.get("http://localhost:7200/rest/repositories")
+    if not response.ok:
+        raise RuntimeError(f"Failed to get list of repositories: {response.text}")
+
+    repositories = response.json()
+    if not repositories:
+        print("No repositories found. Creating a test repository...")
+        return _create_repository()
+
+    # List all available repositories
+    print("Available repositories:")
+    for repo in repositories:
+        repo_id = repo.get("id")
+        repo_title = repo.get("title", "No title")
+        print(f"  - {repo_id}: {repo_title}")
+
+    # Use the first repository
+    repo_id = repositories[0].get("id")
+    print(f"Using repository: {repo_id}")
+    return repo_id
+
+
+def _create_repository():
+    """Create a new test repository."""
+    config = {"id": "test-repo", "title": "Test Repository", "type": "free"}
+
+    response = requests.post("http://localhost:7200/rest/repositories", json=config)
+
+    if not response.ok:
+        raise RuntimeError(f"Failed to create repository: {response.text}")
+
+    print("Repository 'test-repo' created successfully")
+    return "test-repo"
+
+
+def _load_test_data(repository_id):
+    """Load test data files from tests/data into GraphDB."""
+    tests_directory = Path(__file__).parent
+    data_directory = tests_directory / "data"
+    data_filenames = ["ontology.ttl", "data.ttl", "annotation.ttl"]
+
+    # Get repository endpoint
+    repo_endpoint = f"http://localhost:7200/repositories/{repository_id}/"
+
+    # Find and load each file
+    files_loaded = False
+    for filename in data_filenames:
+        file_path = data_directory / filename
+
+        if not file_path.exists():
+            print(f"Warning: {file_path} not found. Skipping...")
+            continue
+
+        print(f"Loading {file_path}...")
+
+        content_type = {  # noqa: F841
+            ".owl": "application/rdf+xml",
+            ".ttl": "text/turtle",
+            ".nt": "application/n-triples",
+            ".nq": "application/n-quads",
+            ".trig": "application/trig",
+            ".jsonld": "application/ld+json",
+        }.get(file_path.suffix, "text/turtle")
+
+        try:
+            # Use requests to upload the file instead of curl subprocess
+            with open(file_path, "rb") as f:
+                data = f.read()
+
+            headers = {"Content-Type": "application/x-turtle"}
+
+            graph_url = f"{repo_endpoint}rdf-graphs/service?graph=http://{filename.replace('.ttl', '')}.local/"
+
+            response = requests.post(graph_url, data=data, headers=headers)
+
+            if response.ok:
+                print(f"Successfully loaded {file_path}")
+                files_loaded = True
+            else:
+                print(
+                    f"Failed to load {file_path}: {response.status_code} - {response.text}"
+                )
+        except Exception as e:
+            print(f"Failed to load {file_path}: {e}")
+
+    if files_loaded:
+        print("Test data loading completed")
+    else:
+        print("Warning: No test data files were loaded successfully")
+
+
 @pytest.fixture(scope="session")
 def algorithm_image(docker_client):
-    """Build the algorithm Docker image for the entire test session."""
-    # Get repository root and derive package name from folder
-    # TODO change to mock algorithm located in /tests/mock_algorithm
-    repo_root = Path(__file__).parent.parent
-    pkg_name = repo_root.name.lower()  # Use folder name, converted to lowercase
+    """Build the algorithm Docker image for the entire test session. Depends on Flyover setup."""
+
+    # Use mock algorithm located in /tests/mock_algorithm
+    mock_algorithm_path = Path(__file__).parent / "mock_algorithm" / "v6-rdf-mock"
+
+    if not mock_algorithm_path.exists():
+        pytest.skip(f"Mock algorithm directory not found at {mock_algorithm_path}")
+
+    # Use v6-rdf-mock as package name
+    pkg_name = "v6-rdf-mock"
 
     # Create image tag from package name
     image_tag = f"{pkg_name}:ci-test"
 
     try:
-        print(f"Building algorithm image from {repo_root}...")
+        print(f"Building algorithm image from {mock_algorithm_path}...")
         print(f"Package name: {pkg_name}")
         print(f"Image tag: {image_tag}")
 
-        # Build Docker image for the algorithm
-        build_result = subprocess.run(
-            [
-                "docker",
-                "build",
-                "-t",
-                image_tag,
-                "--build-arg",
-                f"PKG_NAME={pkg_name}",
-                str(repo_root),
-            ],
-            check=True,
-            timeout=300,
-            capture_output=True,
-            text=True,
-        )
+        # Copy v6-tools-rdf source to the mock algorithm directory temporarily
+        v6_tools_src = Path(__file__).parent.parent / "src"
+        v6_tools_pyproject = Path(__file__).parent.parent / "pyproject.toml"
+        v6_tools_readme = Path(__file__).parent.parent / "README.md"
 
-        if build_result.returncode != 0:
-            pytest.skip(
-                f"Algorithm image build failed with exit code {build_result.returncode}:\n"
-                f"STDOUT: {build_result.stdout}\n"
-                f"STDERR: {build_result.stderr}"
+        temp_v6_dir = mock_algorithm_path / "v6-tools-rdf-src"
+        if temp_v6_dir.exists():
+            shutil.rmtree(temp_v6_dir)
+        temp_v6_dir.mkdir()
+
+        # Copy the source files
+        shutil.copytree(v6_tools_src, temp_v6_dir / "src")
+        shutil.copy2(v6_tools_pyproject, temp_v6_dir)
+        shutil.copy2(v6_tools_readme, temp_v6_dir)
+
+        try:
+            # Build Docker image for the mock algorithm
+            build_result = subprocess.run(
+                [
+                    "docker",
+                    "build",
+                    "-t",
+                    image_tag,
+                    "--build-arg",
+                    f"PKG_NAME={pkg_name}",
+                    str(mock_algorithm_path),
+                ],
+                check=True,
+                timeout=300,
+                capture_output=True,
+                text=True,
             )
+
+            if build_result.returncode != 0:
+                pytest.skip(
+                    f"Algorithm image build failed with exit code {build_result.returncode}:\n"
+                    f"STDOUT: {build_result.stdout}\n"
+                    f"STDERR: {build_result.stderr}"
+                )
+
+        finally:
+            # Clean up temporary directory
+            if temp_v6_dir.exists():
+                shutil.rmtree(temp_v6_dir)
 
         # Verify the image was created
         try:
@@ -182,9 +614,13 @@ def extra_node_config_file(algorithm_image):
 
 
 @pytest.fixture(scope="session")
-def vantage6_network_session(docker_client, extra_node_config_file):
+def vantage6_network_session(docker_client, extra_node_config_file, rdf_store):
     """Set up the Vantage6 developer network for the entire test session."""
     from tests.integration.test_vantage6_integration import cleanup_vantage6_network
+
+    # Ensure RDF store is running before starting Vantage6 network
+    print(f"RDF store is ready at: {rdf_store['endpoint']}")
+    print("Starting Vantage6 network with RDF store dependency satisfied...")
 
     network_info = {"status": "not_started", "created_containers": set()}
 
@@ -214,6 +650,10 @@ def vantage6_network_session(docker_client, extra_node_config_file):
         )
         time.sleep(5)
 
+        # Additional wait to ensure RDF store is stable before Vantage6 starts
+        print("Ensuring RDF store is stable before starting Vantage6...")
+        time.sleep(10)
+
         # Capture containers before creating the network
         containers_before = set(
             container.id for container in docker_client.containers.list(all=True)
@@ -228,11 +668,7 @@ def vantage6_network_session(docker_client, extra_node_config_file):
         store_config_path = data_directory / "additional_vantage6_store_config.yaml"
 
         # Define dataset paths and names
-        datasets = [
-            ("creatures_of_enceladus", data_directory / "creatures_of_enceladus.csv"),
-            ("creatures_of_europa", data_directory / "creatures_of_europa.csv"),
-            ("creatures_of_titan", data_directory / "creatures_of_titan.csv"),
-        ]
+        datasets = [("rdf_store", data_directory / "rdf_store.csv")]
 
         # Create and start a demo network with extra node config
         print("Creating demo network: algorithm-ci-test.")
@@ -251,6 +687,8 @@ def vantage6_network_session(docker_client, extra_node_config_file):
             str(server_config_path),
             "--extra-store-config",
             str(store_config_path),
+            "--num-nodes",  # For the RDF-tools we only test partial and 1 organisation is enough
+            "1",
         ]
 
         # Add datasets dynamically
@@ -340,6 +778,20 @@ def vantage6_network_session(docker_client, extra_node_config_file):
             f"Network started with {len(network_info['created_containers'])} new containers"
         )
 
+        # Verify RDF store is still accessible after Vantage6 startup
+        try:
+            response = requests.get(
+                "http://localhost:7200/rest/repositories", timeout=5
+            )
+            if response.status_code == 200:
+                print("RDF store confirmed accessible after Vantage6 startup")
+            else:
+                print(
+                    f"Warning: RDF store check returned status {response.status_code}"
+                )
+        except Exception as e:
+            print(f"Warning: Could not verify RDF store after Vantage6 startup: {e}")
+
         yield network_info
 
     except subprocess.TimeoutExpired as e:
@@ -356,7 +808,7 @@ def vantage6_network_session(docker_client, extra_node_config_file):
 
 
 @pytest.fixture(scope="session")
-def authentication(vantage6_network_session, docker_client) -> Client:
+def authentication(vantage6_network_session, docker_client, rdf_store) -> Client:
     """
     This function authenticates a client.
 
@@ -365,20 +817,23 @@ def authentication(vantage6_network_session, docker_client) -> Client:
 
     Parameters:
     vantage6_network_session: The running vantage6 network session (dependency)
+    rdf_store: The running RDF store (dependency)
 
     Returns:
         Client: An authenticated client with encryption set up.
     """
-    # Ensure the network is running before attempting authentication
+    # Ensure both the network and RDF store are running before attempting authentication
     if vantage6_network_session["status"] != "running":
         pytest.skip("Vantage6 network is not running - cannot authenticate")
+
+    print(f"Authenticating with RDF store available at: {rdf_store['endpoint']}")
 
     # Additional wait to ensure all services are fully ready
     print("Waiting for network services to be fully ready for authentication...")
     time.sleep(10)
 
     vantage6_config = {
-        "server_url": docker_client.docker_host,
+        "server_url": "http://localhost",
         "server_port": 7601,
         "server_api": "/api",
         "username": "dev_admin",

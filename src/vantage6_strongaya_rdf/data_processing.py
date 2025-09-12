@@ -11,7 +11,6 @@ File organisation:
 import pandas as pd
 
 from typing import Any
-
 from vantage6_strongaya_general.miscellaneous import PredeterminedInfoAccessor
 from vantage6_strongaya_general.general_statistics import _compute_local_missing_values
 
@@ -49,13 +48,13 @@ def extract_subclass_info(df: pd.DataFrame, variable: str) -> pd.DataFrame:
     if "sub_class" in df.columns:
         df[variable] = df.apply(
             lambda row: (
-                row["value"]
+                row["any_value"]
                 if pd.isna(row["sub_class"]) or row["sub_class"] == ""
                 else row["sub_class"]
             ),
             axis=1,
         )
-        df = df.drop(columns=["sub_class", "value"])
+        df = df.drop(columns=["sub_class", "any_value"])
     else:
-        df = df.rename(columns={"value": variable})
+        df = df.rename(columns={"any_value": variable})
     return df
