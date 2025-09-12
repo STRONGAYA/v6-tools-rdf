@@ -155,7 +155,7 @@ class TestVantage6DeveloperNetwork:
         # Check that Docker containers are running
         created_containers = vantage6_network_session["created_containers"]
         assert (
-                len(created_containers) >= 4
+            len(created_containers) >= 4
         ), f"Expected at least 4 new containers, found {len(created_containers)}"
 
         # Categorise containers and check their expected states
@@ -177,7 +177,9 @@ class TestVantage6DeveloperNetwork:
             except docker.errors.NotFound:
                 # Container may have completed and been removed - this is expected for some containers
                 missing_containers.append(container_id)
-                print(f"Container {container_id[:12]} not found (likely completed and removed)")
+                print(
+                    f"Container {container_id[:12]} not found (likely completed and removed)"
+                )
 
         # Allow some containers to be missing (completed tasks)
         found_containers = len(service_containers) + len(task_containers)
@@ -185,20 +187,19 @@ class TestVantage6DeveloperNetwork:
 
         # Ensure we still have core service containers running
         assert (
-                len(service_containers) >= 2
+            len(service_containers) >= 2
         ), f"Expected at least 2 service containers running, found {len(service_containers)}"
 
         # Service containers should be running
         for container in service_containers:
             assert (
-                    container.status == "running"
+                container.status == "running"
             ), f"Service container {container.name} should be running: {container.status}"
 
         print(
             f"Network setup verified: {len(service_containers)} service containers, "
             f"{len(task_containers)} task containers, {len(missing_containers)} completed"
         )
-
 
     def _identify_container_types(
         self, docker_client, created_containers: List[str]
