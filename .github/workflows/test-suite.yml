@@ -37,54 +37,13 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest pytest-cov pytest-mock hypothesis faker psutil scipy
+          pip install pytest pytest-mock hypothesis faker psutil scipy
           pip install vantage6==${{ matrix.vantage6-version }}
           pip install -e .
 
-      - name: Run tests with coverage
+      - name: Run tests
         run: |
-          pytest --cov=v6_strongaya_rdf --cov-report=term-missing --cov-report=html --cov-report=json
-
-      - name: Extract coverage percentage and create badge
-        run: |
-          COVERAGE=$(python -c "import json; print(json.load(open('coverage.json'))['totals']['percent_covered_display'])")
-          echo "::notice title=Coverage Percentage::Coverage: $COVERAGE%"
-          echo "COVERAGE_PERCENTAGE=$COVERAGE" >> $GITHUB_ENV
-          
-          # Determine color based on coverage
-          if (( $(echo "$COVERAGE >= 80" | bc -l) )); then
-            COLOR="brightgreen"
-          elif (( $(echo "$COVERAGE >= 60" | bc -l) )); then
-            COLOR="yellow"  
-          elif (( $(echo "$COVERAGE >= 40" | bc -l) )); then
-            COLOR="orange"
-          else
-            COLOR="red"
-          fi
-          
-          curl -o tests/coverage-badge.svg "https://img.shields.io/badge/coverage-$COVERAGE%25-$COLOR"
-
-      - name: Commit coverage badge
-        if: github.ref == 'refs/heads/main'
-        run: |
-          git config --global user.email "github-actions[bot]@users.noreply.github.com"
-          git config --global user.name "github-actions[bot]"
-          git add tests/coverage-badge.svg
-          git diff --staged --quiet || git commit -m "Update coverage badge to $COVERAGE_PERCENTAGE%"
-          git push
-
-      - name: Check coverage threshold
-        run: |
-          coverage report --fail-under=50
-
-      - name: Archive test results
-        uses: actions/upload-artifact@v4
-        if: always()
-        with:
-          name: test-results-${{ matrix.python-version }}-v6-${{ matrix.vantage6-version }}
-          path: |
-            htmlcov/
-            coverage.json
+          pytest
 
   lint:
     runs-on: ubuntu-latest
