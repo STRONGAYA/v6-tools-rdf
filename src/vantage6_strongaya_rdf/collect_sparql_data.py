@@ -168,7 +168,7 @@ def _process_variable_query(
         result_df["patient_id"] = result_df.index
         return extract_subclass_info(result_df, variable)
     else:
-        raise DataError(f"No data retrieved for variable {variable}.")
+        return pd.DataFrame(columns=["patient_id", variable])
 
 
 def collect_sparql_data(
@@ -229,7 +229,4 @@ def collect_sparql_data(
     # add_missing_data_info(intermediate_df, missing_data_notation)
     intermediate_df = intermediate_df.replace(missing_data_notation, pd.NA)
 
-    if not intermediate_df.empty:
-        return intermediate_df
-    else:
-        raise DataError("No data retrieved from SPARQL endpoint.")
+    return intermediate_df
