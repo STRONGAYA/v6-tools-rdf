@@ -15,7 +15,6 @@ from importlib import resources
 from typing import List
 
 from vantage6.algorithm.tools.exceptions import (
-    DataError,
     UserInputError,
     AlgorithmError,
 )
