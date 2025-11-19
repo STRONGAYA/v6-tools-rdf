@@ -126,7 +126,7 @@ def test_configurations(rdf_store):
             "query_type": "single_column",
             "expected_failure": True,
             "failure_reason": "Invalid query injection.",
-            "expected_error_type": [UserInputError, AlgorithmError, ],
+            "expected_error_type": [UserInputError, AlgorithmError],
         },
         "standard_dataset_incorrect_input": {
             "database_label": "rdf_store",  # Always use rdf_store as this refers to the RDF-store setup
