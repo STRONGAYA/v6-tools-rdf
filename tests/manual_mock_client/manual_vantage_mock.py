@@ -76,7 +76,7 @@ task = client.task.create(
                 },
                 "ncit:C156420": {
                     "datatype": "numerical",
-                }
+                },
             },
             "query_type": "single_column",
         },

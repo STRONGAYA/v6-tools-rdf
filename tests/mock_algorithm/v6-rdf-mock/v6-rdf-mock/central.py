@@ -3,12 +3,19 @@ from typing import Any, Dict
 from vantage6.algorithm.tools.decorators import algorithm_client
 from vantage6.algorithm.client import AlgorithmClient
 
-from vantage6_strongaya_general.miscellaneous import collect_organisation_ids, safe_log, CategoricalDetails, NonCategoricalDetails
+from vantage6_strongaya_general.miscellaneous import (
+    collect_organisation_ids,
+    safe_log,
+    CategoricalDetails,
+    NonCategoricalDetails,
+)
 
 
 @algorithm_client
 def central_rdf_mock(
-    client: AlgorithmClient, variables_to_extract: Dict[str, CategoricalDetails | NonCategoricalDetails], query_type: str
+    client: AlgorithmClient,
+    variables_to_extract: Dict[str, CategoricalDetails | NonCategoricalDetails],
+    query_type: str,
 ) -> Any:
     """
     THIS FUNCTION IS FOR MOCK ALGORITHM CLIENT SUPPORT ONLY. DO NOT USE FOR TESTING.
