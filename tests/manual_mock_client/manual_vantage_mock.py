@@ -70,7 +70,14 @@ task = client.task.create(
     input_={
         "method": "partial_rdf_mock",
         "kwargs": {
-            "variables_to_extract": ["ncit:C28421", "ncit:C156420"],
+            "variables_to_extract": {
+                "ncit:C28421": {
+                    "datatype": "categorical",
+                },
+                "ncit:C156420": {
+                    "datatype": "numerical",
+                },
+            },
             "query_type": "single_column",
         },
     },

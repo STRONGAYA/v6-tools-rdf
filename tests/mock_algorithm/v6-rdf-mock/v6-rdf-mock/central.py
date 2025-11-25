@@ -1,14 +1,21 @@
-from typing import Any, List
+from typing import Any, Dict
 
 from vantage6.algorithm.tools.decorators import algorithm_client
 from vantage6.algorithm.client import AlgorithmClient
 
-from vantage6_strongaya_general.miscellaneous import collect_organisation_ids, safe_log
+from vantage6_strongaya_general.miscellaneous import (
+    collect_organisation_ids,
+    safe_log,
+    CategoricalDetails,
+    NonCategoricalDetails,
+)
 
 
 @algorithm_client
 def central_rdf_mock(
-    client: AlgorithmClient, variables_to_extract: List[str], query_type: str
+    client: AlgorithmClient,
+    variables_to_extract: Dict[str, CategoricalDetails | NonCategoricalDetails],
+    query_type: str,
 ) -> Any:
     """
     THIS FUNCTION IS FOR MOCK ALGORITHM CLIENT SUPPORT ONLY. DO NOT USE FOR TESTING.
@@ -21,7 +28,7 @@ def central_rdf_mock(
 
     Args:
         client: Vantage6 algorithm client for task coordination
-        variables_to_extract: List of variable identifiers to extract from RDF stores
+        variables_to_extract: Dict of variable identifiers to extract from RDF stores
         query_type: Type of SPARQL query to be used
 
     Returns:

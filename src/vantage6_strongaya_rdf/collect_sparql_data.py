@@ -22,7 +22,7 @@ from vantage6.algorithm.tools.util import get_env_var
 from vantage6_strongaya_general.miscellaneous import safe_log
 
 from .sparql_client import post_sparql_query
-from .data_processing import extract_subclass_info
+from .data_processing import add_missing_data_info, extract_subclass_info
 
 NAUGHTY_WORD_LIST = [
     "DROP",
@@ -225,7 +225,10 @@ def collect_sparql_data(
         except Exception as e:
             raise AlgorithmError("error", f"Error processing {variable}: {e}")
 
-    # add_missing_data_info(intermediate_df, missing_data_notation)
+    # Calculate the missing count using the specific notation
+    add_missing_data_info(intermediate_df, missing_data_notation)
+
+    # Replace the missing value notation to prevent TypeErrors
     intermediate_df = intermediate_df.replace(missing_data_notation, pd.NA)
 
     return intermediate_df
