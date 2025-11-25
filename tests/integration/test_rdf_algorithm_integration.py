@@ -373,19 +373,7 @@ def determine_result_acceptance(
 ) -> bool:
     """
     Validate that federated RDF extraction results meet expected criteria.
-
-    This function performs validation of the federated computation results
-    by checking data structure, content consistency, and comparing against
-    expected mock data values.
-
-    Args:
-        federated_result: Results from federated computation (DataFrame or list of DataFrames)
-        algorithm_kwargs: Dict of algorithm parameters used for the computation
-
-    Returns:
-        bool: True if results pass validation checks, False otherwise
     """
-
     if federated_result is None:
         print("Validation failed: Result is None")
         return False
@@ -395,26 +383,24 @@ def determine_result_acceptance(
 
     query_type = algorithm_kwargs.get("query_type")
     if query_type == "single_column":
-        # Load expected data from CSV file
         csv_path = Path(__file__).parent.parent / "data" / "data.csv"
         if csv_path.exists():
             df = pd.read_csv(csv_path)
             df["patient_id"] = range(len(df))
-            df = df.map(lambda x: x if not isinstance(x, (int, float)) else str(x))
-            expected_data = [df.to_json(orient="columns")]
+            expected_data = [df]
         else:
             raise FileNotFoundError(f"Expected data file not found: {csv_path}")
-
     else:
         print(f"Validation skipped: Unsupported query_type '{query_type}'")
         return True
+
     try:
-        # Handle both single DataFrame and list of DataFrames
         if isinstance(federated_result, list):
             result_dataframes = federated_result
         else:
             result_dataframes = [federated_result]
 
+        # Special case: non-existing variable
         if algorithm_kwargs.get("variables_to_extract") == {
             "ncit:C0123456789": {"datatype": "categorical"},
         }:
@@ -424,59 +410,33 @@ def determine_result_acceptance(
                 ), "Result DataFrame should be empty for non-existing variable"
             return True
 
-        # Convert expected data to DataFrames for comparison
-        expected_dataframes = []
-        for json_string in expected_data:
-            expected_df = pd.read_json(StringIO(json_string))
-            expected_dataframes.append(expected_df)
-
-        # Validate we have the expected number of DataFrames
-        if len(result_dataframes) != len(expected_dataframes):
+        if len(result_dataframes) != len(expected_data):
             print(
-                f"Validation failed: Expected {len(expected_dataframes)} DataFrames, got {len(result_dataframes)}"
+                f"Validation failed: Expected {len(expected_data)} DataFrames, got {len(result_dataframes)}"
             )
             return False
 
-        # Validate each DataFrame
         for i, (result_df, expected_df) in enumerate(
-            zip(result_dataframes, expected_dataframes)
+            zip(result_dataframes, expected_data)
         ):
             if not isinstance(result_df, pd.DataFrame):
                 print(f"Validation failed: Result {i} is not a DataFrame")
                 return False
 
-            # Check shape
-            if result_df.shape != expected_df.shape:
-                print(
-                    f"Validation failed: DataFrame {i} shape mismatch. "
-                    f"Expected {expected_df.shape}, got {result_df.shape}"
+            try:
+                pd.testing.assert_frame_equal(
+                    result_df,
+                    expected_df,
+                    check_dtype=False,
+                    check_like=True,
+                    rtol=1e-5,
+                    atol=1e-8,
                 )
+                print(f"Validation passed: DataFrame {i} matches expected data")
+            except AssertionError as e:
+                print(f"Validation failed: DataFrame {i} does not match expected data")
+                print(f"Difference details: {e}")
                 return False
-
-            # Check columns
-            if not all(col in result_df.columns for col in expected_df.columns):
-                print(f"Validation failed: DataFrame {i} missing expected columns")
-                return False
-
-            # Check a sample of data values for key columns
-            if (
-                "patient_id" in result_df.columns
-                and "patient_id" in expected_df.columns
-            ):
-                if not result_df["patient_id"].equals(expected_df["patient_id"]):
-                    print(
-                        f"Validation failed: DataFrame {i} patient_id values don't match"
-                    )
-                    return False
-
-            # For the variables, check that we have the expected unique values
-            for variable in ["ncit:C28421", "ncit:C156420"]:
-                if variable in result_df.columns and variable in expected_df.columns:
-                    if not result_df[variable].equals(expected_df[variable]):
-                        print(
-                            f"Validation failed: DataFrame {i} values for {variable} don't match"
-                        )
-                        return False
 
         print(
             f"Validation passed: All {len(result_dataframes)} DataFrames match expected data"
