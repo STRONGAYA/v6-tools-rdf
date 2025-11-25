@@ -7,7 +7,7 @@
 <br>
 <a href="https://github.com/vantage6/vantage6/"><img alt="Vantage6 4.11, 4.12" src="https://img.shields.io/badge/vantage6- 4.11 | 4.12-blue.svg"></a>
 <a href="https://github.com/MaastrichtU-CDS/Flyover"><img alt="Flyover version 2.0+" src="https://img.shields.io/badge/Flyover%20Version-2.0+-purple"></a>
-<a href="https://strongaya.eu/wp-content/uploads/2025/07/algorithm_review_guidelines.pdf"><img alt="STRONG AYA Algorithm Guideline Conformity: v1.0.0 Pending" src="https://img.shields.io/badge/STRONG%20AYA%20Algorithm%20Guideline%20Conformity-v1.0.0%20pending-yellow"></a>
+<a href="https://strongaya.eu/wp-content/uploads/2025/07/algorithm_review_guidelines.pdf"><img alt="STRONG AYA Algorithm Guideline Conformity: v1.0.1 Pending" src="https://img.shields.io/badge/STRONG%20AYA%20Algorithm%20Guideline%20Conformity-v1.0.1%20pending-yellow"></a>
 <br>
 <a href="https://github.com/psf/black"><img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-000000.svg"></a>
 <a href="https://flake8.pycqa.org/"><img alt="Linting: flake8" src="https://img.shields.io/badge/linting-flake8-informational"></a>
@@ -18,7 +18,7 @@
 
 <!--
 To show the approved badge instead, use:
-<a href="https://strongaya.eu/wp-content/uploads/2025/07/algorithm_review_guidelines.pdf"><img alt="STRONG AYA Algorithm Guideline Conformity: v1.0.0 Approved" src="https://img.shields.io/badge/STRONG%20AYA%20Algorithm%20Guideline%20Conformity-v1.0.0%20approved-brightgreen">
+<a href="https://strongaya.eu/wp-content/uploads/2025/07/algorithm_review_guidelines.pdf"><img alt="STRONG AYA Algorithm Guideline Conformity: v1.0.1 Approved" src="https://img.shields.io/badge/STRONG%20AYA%20Algorithm%20Guideline%20Conformity-v1.0.1%20approved-brightgreen">
 -->
 
 # Purpose of this repository
@@ -53,13 +53,13 @@ algorithm.
 For the `requirements.txt` file, you can add the following line to the file:
 
 ```
-git+https://github.com/STRONGAYA/v6-tools-rdf.git@v1.0.0
+git+https://github.com/STRONGAYA/v6-tools-rdf.git@v1.0.1
 ```
 
 For the `setup.py` file, you can add the following line to the `install_requires` list:
 
 ```python
-        "vantage6-strongaya-rdf @ git+https://github.com/STRONGAYA/v6-tools-rdf.git@v1.0.0",
+        "vantage6-strongaya-rdf @ git+https://github.com/STRONGAYA/v6-tools-rdf.git@v1.0.1",
 ```
 
 The algorithm's `setup.py`, particularly the `install_requirements`, section file should then look something like this:
@@ -75,7 +75,7 @@ with open(path.join(here, 'README.md'), encoding='utf-8') as f:
     long_description = f.read()
 setup(
     name='v6-not-an-actual-algorithm',
-    version="1.0.0",
+    version="1.0.1",
     description='Fictive Vantage6 algorithm that performs general statistics computation.',
     long_description=long_description,
     long_description_content_type='text/markdown',
@@ -86,7 +86,7 @@ setup(
         'vantage6-algorithm-tools',
         'numpy',
         'pandas',
-        "vantage6-strongaya-rdf @ git+https://github.com/STRONGAYA/v6-tools-rdf.git@v1.0.0"
+        "vantage6-strongaya-rdf @ git+https://github.com/STRONGAYA/v6-tools-rdf.git@v1.0.1"
         # other dependencies
     ]
 )
