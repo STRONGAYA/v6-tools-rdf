@@ -155,9 +155,11 @@ class TestSchemaParser:
         path = params["predicate_path"]
         assert path.startswith("(")
         assert path.endswith(")*")
-        # Should have sio:SIO_000255 and sio:SIO_000008 from the schema
-        assert "sio:SIO_000255" in path or "SIO_000255" in path
-        assert "sio:SIO_000008" in path or "SIO_000008" in path
+        # Verify expected predicates are in the path with proper namespace prefix
+        assert "sio:SIO_000255" in path, f"Expected 'sio:SIO_000255' in path: {path}"
+        assert "sio:SIO_000008" in path, f"Expected 'sio:SIO_000008' in path: {path}"
+        # Verify pipe separator between predicates
+        assert "|" in path, f"Expected pipe separator in path: {path}"
 
 
 if __name__ == "__main__":

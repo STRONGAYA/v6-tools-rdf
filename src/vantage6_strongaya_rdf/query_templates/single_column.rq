@@ -33,7 +33,7 @@ WHERE {
 
     OPTIONAL {
         ?subcell rdf:type ?subClass .
-        FILTER (STRSTARTS(STR(?subClass), STR(PLACEHOLDER_ONTOLOGY)) || strStarts(str(?subClass), str(strongaya:))) .
+        FILTER (STRSTARTS(STR(?subClass), STR(PLACEHOLDER_ONTOLOGY)) || STRSTARTS(STR(?subClass), STR(strongaya:))) .
         ?subClass rdfs:subClassOf ?main_class .
         FILTER (!sameTerm(?subClass, ?main_class))
     }
