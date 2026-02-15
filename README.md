@@ -37,7 +37,9 @@ The various functions are organised in different sections, consisting of:
 - **RDF Data Collection**: Functions to formulate and execute a SPARQL query on an RDF/SPARQL endpoint;
 - **Data Processing**: Functions to process the output of an RDF/SPARQL endpoint (e.g. determine missing values, extract
   associated subclasses);
-- **Query Templates**: SPARQL query templates that the SPARQL data collection section uses
+- **Schema Loader**: Functions to load the AYA cancer JSON-LD schema from bundled resources or remote URL;
+- **Schema Parser**: Functions to parse the schema and build dynamic SPARQL predicate paths;
+- **Query Templates**: SPARQL query templates that the SPARQL data collection section uses (supports both single-column and multi-column queries)
 
 # Usage
 
@@ -131,6 +133,83 @@ def partial_general_statistics(variables_to_analyse: dict) -> dict:
     return result
 ```
 
+## Schema-Based Dynamic SPARQL Query Generation
+
+The library now supports dynamic SPARQL predicate path building based on the AYA cancer JSON-LD schema. This feature allows for more flexible and schema-aware querying of RDF data.
+
+### Using Schema-Based Queries
+
+To use schema-based query generation, set `use_schema=True`:
+
+```python
+from vantage6_strongaya_rdf.collect_sparql_data import collect_sparql_data
+
+# Fetch data with schema-based predicate paths
+df = collect_sparql_data(
+    variables_to_analyse=['age_at_initial_diagnosis', 'gender'],
+    query_type="single_column",
+    endpoint="http://localhost:7200/repositories/userRepo",
+    use_schema=True  # Enable schema-based path generation
+)
+```
+
+### Schema Loading Options
+
+The library bundles a copy of the AYA cancer schema and uses it by default. You can also fetch the latest version from GitHub:
+
+```python
+# Use bundled schema (default, no network needed)
+df = collect_sparql_data(variables, use_schema=True)
+
+# Or fetch latest from GitHub (requires network access)
+# Set environment variable: USE_REMOTE_SCHEMA=true
+
+# Or use a custom schema URL
+# Set environment variable: SCHEMA_URL=https://your-custom-url/schema.jsonld
+```
+
+### Direct Schema Access
+
+You can also use the schema loader and parser directly:
+
+```python
+from vantage6_strongaya_rdf import load_schema, get_variable_query_params
+
+# Load the schema
+schema = load_schema(use_remote=False)  # Use bundled schema
+
+# Get query parameters for a variable
+params = get_variable_query_params('age_at_initial_diagnosis', schema)
+print(f"Predicate path: {params['predicate_path']}")
+print(f"Main class: {params['main_class']}")
+print(f"Ontology prefix: {params['ontology_prefix']}")
+```
+
+### Multi-Column Queries
+
+The library now supports multi-column queries for fetching multiple variables in a single query:
+
+```python
+# Note: Multi-column queries are designed for specific use cases
+# and may require additional configuration
+df = collect_sparql_data(
+    variables_to_analyse=['variable1', 'variable2'],
+    query_type="multi_column",
+    endpoint="http://localhost:7200/repositories/userRepo",
+    use_schema=True
+)
+```
+
+### Environment Variables
+
+The following environment variables can be used to configure schema loading:
+
+- `USE_REMOTE_SCHEMA`: Set to `"true"` to fetch schema from GitHub (default: `"false"`)
+- `SCHEMA_URL`: Custom URL to fetch schema from (overrides default GitHub URL)
+- `SPARQL_ENDPOINT`: Override the default SPARQL endpoint
+- `VARIABLE_PROPERTY`: Override the default variable property predicate
+- `MISSING_DATA_NOTATION`: Custom notation for missing data
+
 The various functions are available through `pip install` for debugging and testing purposes.
 The library can be installed as follows:
 
@@ -150,6 +229,7 @@ tests/
 ├── conftest.py                           # Common fixtures and test utilities
 ├── unit/                                 # Unit tests for individual functions
 │   ├── test_library_functions.py         # Tests for library functions
+│   ├── test_schema_functions.py          # Tests for schema loader and parser
 ├── integration/                          # Integration tests
 │   └── test_vantage6_integration.py      # Data stratification workflows
 │   └── test_rdf_algorithm_integration.py # Vantage6 algorithm integration tests
