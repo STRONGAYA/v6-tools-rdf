@@ -1,0 +1,100 @@
+PREFIX dbo: <http://um-cds/ontologies/databaseontology/>
+PREFIX roo: <http://www.cancerdata.org/roo/>
+PREFIX ncit: <http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#>
+PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
+PREFIX owl: <http://www.w3.org/2002/07/owl#>
+PREFIX sio: <http://semanticscience.org/resource/>
+PREFIX sct: <http://snomed.info/id/>
+PREFIX strongaya: <https://strongaya.eu/>
+PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+
+SELECT
+	?p1
+	?p2
+    ?patientID
+    ?subClass
+    ?any_value
+    ?subClass2
+    ?any_value2
+WHERE {
+
+  # 1) RESOLVE PATIENT IDENTITY (FK or flat table)
+  {
+    SELECT DISTINCT ?patientID ?patientID2
+    WHERE {
+      ?p1 sio:SIO_000673 ?idNode1 .
+      ?idNode1 a ncit:C25364 ;
+               dbo:has_cell/dbo:has_value ?patientID .
+
+      ?p2 sio:SIO_000673 ?idNode2 .
+      ?idNode2 a ncit:C25364 ;
+               dbo:has_cell/dbo:has_value ?patientID2 .
+
+      {
+        ?idNode2 dbo:fk_refers_to ?idNode1
+      }
+      UNION
+      {
+        FILTER NOT EXISTS { ?idNode2 dbo:fk_refers_to ?idNode1 }
+        FILTER(?patientID2 = ?patientID)
+      }
+    }
+  }
+
+  # 2) AGGREGATE FIRST ATTRIBUTE
+  {
+    SELECT
+        ?p1
+        ?patientID
+        ?subClass 
+        (SAMPLE(?value) AS ?any_value)
+    WHERE {
+      ?p1 sio:SIO_000673 ?idNode1 .
+      ?idNode1 a ncit:C25364 ;
+               dbo:has_cell/dbo:has_value ?patientID .
+            
+      ?p1 PLACEHOLDER_PREDICATE_PATH_1 ?attr .
+      ?attr rdf:type PLACEHOLDER_CLASS_1 ;
+            rdf:type ?mainClass ;
+            dbo:has_cell/dbo:has_value ?value .
+
+      FILTER STRSTARTS(STR(?mainClass), STR(PLACEHOLDER_ONTOLOGY_1))
+
+      OPTIONAL {
+        ?attr rdf:type ?subClass .
+        FILTER (STRSTARTS(STR(?subClass), STR(PLACEHOLDER_ONTOLOGY_1)) || STRSTARTS(STR(?subClass), STR(strongaya:)))
+        ?subClass rdfs:subClassOf ?mainClass .
+        FILTER(!sameTerm(?subClass, ?mainClass))
+      }
+    }
+    GROUP BY ?p1 ?patientID ?subClass
+  }
+    
+  # 3) AGGREGATE SECOND ATTRIBUTE
+  {
+    SELECT
+        ?p2
+        ?patientID2
+        ?subClass2
+        (SAMPLE(?value2) AS ?any_value2)
+    WHERE {
+      ?p2 sio:SIO_000673 ?idNode2 .
+      ?idNode2 a ncit:C25364 ;
+               dbo:has_cell/dbo:has_value ?patientID2 .
+	  ?p2 PLACEHOLDER_PREDICATE_PATH_2 ?attr2 .
+      ?attr2 rdf:type PLACEHOLDER_CLASS_2 ;
+             rdf:type ?mainClass2 ;
+             dbo:has_cell/dbo:has_value ?value2 .
+
+      FILTER STRSTARTS(STR(?mainClass2), STR(PLACEHOLDER_ONTOLOGY_2))
+
+      OPTIONAL {
+        ?attr2 rdf:type ?subClass2 .
+        FILTER (STRSTARTS(STR(?subClass2), STR(PLACEHOLDER_ONTOLOGY_2)) || STRSTARTS(STR(?subClass2), STR(strongaya:)))
+        ?subClass2 rdfs:subClassOf ?mainClass2 .
+        FILTER(!sameTerm(?subClass2, ?mainClass2))
+      }
+    }
+    GROUP BY ?p2 ?patientID2 ?subClass2
+  }
+}
