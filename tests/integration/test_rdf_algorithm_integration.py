@@ -116,6 +116,18 @@ def test_configurations(rdf_store):
             },
             "query_type": "single_column",
         },
+        "standard_dataset_multi_column": {
+            "database_label": "rdf_store",  # Always use rdf_store as this refers to the RDF-store setup
+            "variables_to_extract": {
+                "ncit:C28421": {
+                    "datatype": "categorical",
+                },
+                "ncit:C156420": {
+                    "datatype": "numerical",
+                },
+            },
+            "query_type": "multi_column",
+        },
         "standard_dataset_bad_actor": {
             "database_label": "rdf_store",  # Always use rdf_store as this refers to the RDF-store setup
             "variables_to_extract": {
@@ -210,6 +222,7 @@ class TestAlgorithmComponent:
         "config_name",
         [
             "standard_dataset",
+            "standard_dataset_multi_column",
             "standard_dataset_incorrect_input",
             "standard_dataset_bad_actor",
             "standard_dataset_missing_variable_input",
@@ -383,6 +396,16 @@ def determine_result_acceptance(
 
     query_type = algorithm_kwargs.get("query_type")
     if query_type == "single_column":
+        csv_path = Path(__file__).parent.parent / "data" / "data.csv"
+        if csv_path.exists():
+            df = pd.read_csv(csv_path)
+            df["patient_id"] = range(len(df))
+            expected_data = [df]
+        else:
+            raise FileNotFoundError(f"Expected data file not found: {csv_path}")
+    elif query_type == "multi_column":
+        # For multi-column queries, expect the same data as single_column
+        # The multi-column template should return the same results, just fetched differently
         csv_path = Path(__file__).parent.parent / "data" / "data.csv"
         if csv_path.exists():
             df = pd.read_csv(csv_path)
