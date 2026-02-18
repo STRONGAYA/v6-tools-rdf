@@ -130,12 +130,12 @@ def _load_query_template(query_name: str) -> str:
 
 
 def _process_variable_query(
-    endpoint: str, 
-    query_template: str, 
-    variable: str, 
+    endpoint: str,
+    query_template: str,
+    variable: str,
     variable_property: str,
     schema: Optional[dict] = None,
-    use_schema: bool = False
+    use_schema: bool = False,
 ) -> pd.DataFrame:
     """
     Process the SPARQL query for a single variable.
@@ -160,23 +160,26 @@ def _process_variable_query(
         raise UserInputError(
             "Potentially dangerous input detected in variable, ontology part, or variable property."
         )
-    
+
     # Build query based on whether we're using schema or not
     if use_schema and schema:
         # Use schema-based predicate path generation
         query_params = get_variable_query_params(variable, schema)
-        
+
         if not query_params:
-            safe_log("warning", f"Could not get query params for {variable} from schema, using fallback")
+            safe_log(
+                "warning",
+                f"Could not get query params for {variable} from schema, using fallback",
+            )
             # Fallback to simple replacement
             predicate_path = variable_property
             main_class = variable
             ontology_prefix = ontology_part
         else:
-            predicate_path = query_params.get('predicate_path', variable_property)
-            main_class = query_params.get('main_class', variable)
-            ontology_prefix = query_params.get('ontology_prefix', ontology_part)
-        
+            predicate_path = query_params.get("predicate_path", variable_property)
+            main_class = query_params.get("main_class", variable)
+            ontology_prefix = query_params.get("ontology_prefix", ontology_part)
+
         query = (
             query_template.replace("PLACEHOLDER_CLASS", main_class)
             .replace("PLACEHOLDER_ONTOLOGY", ontology_prefix)
@@ -197,22 +200,22 @@ def _process_variable_query(
 
     if result:
         result_df = pd.DataFrame(result)
-        
+
         # Handle both old and new column names
         if "patient" in result_df.columns:
             result_df.drop(columns=["patient"], inplace=True)
-        
+
         # Use patientID if available, otherwise use index
         if "patientID" in result_df.columns:
             result_df["patient_id"] = result_df["patientID"]
             result_df.drop(columns=["patientID"], inplace=True)
         else:
             result_df["patient_id"] = result_df.index
-        
+
         # Handle subClass column name variations
         if "subClass" in result_df.columns:
             result_df.rename(columns={"subClass": "sub_class"}, inplace=True)
-        
+
         return extract_subclass_info(result_df, variable)
     else:
         return pd.DataFrame(columns=["patient_id", variable])
@@ -237,9 +240,10 @@ def collect_sparql_data(
         endpoint (str, optional): The SPARQL endpoint URL.
                                   An endpoint specified in the environment variables will be prioritised.
                                   Defaults to "http://localhost:7200/repositories/userRepo".
-        variable_property (str, optional): The property (or predicate) used to identify variables in the SPARQL query.
-                                           A property specified in the environment variables will be prioritised.
-                                           Only required when use_schema is False. Defaults to "dbo:has_column" if not provided.
+        variable_property (str, optional): The property (or predicate) used to identify variables in the
+                                           SPARQL query. A property specified in the environment variables will be
+                                           prioritised. Only required when use_schema is False. Defaults to
+                                           "dbo:has_column" if not provided.
         missing_data_notation (str, optional): The notation used to represent missing data in the DataFrame.
                                                A notation specified in the environment variables will be prioritised.
                                                Defaults to pd.NA.
@@ -253,14 +257,14 @@ def collect_sparql_data(
     """
     # Retrieve environment variables - prioritise them over defaults as local setups might e.g. have different endpoints
     endpoint = get_env_var("SPARQL_ENDPOINT", endpoint)
-    
+
     # Set default for variable_property if not provided
     if variable_property is None:
         variable_property = "dbo:has_column"
-    
+
     variable_property = get_env_var("VARIABLE_PROPERTY", variable_property)
     missing_data_notation = get_env_var("MISSING_DATA_NOTATION", missing_data_notation)
-    
+
     # Load schema if needed
     schema = None
     if use_schema:
@@ -268,11 +272,9 @@ def collect_sparql_data(
             # Check if we should use remote schema
             use_remote = get_env_var("USE_REMOTE_SCHEMA", "false").lower() == "true"
             schema_url_env = get_env_var("SCHEMA_URL", schema_url)
-            
+
             schema = load_schema(
-                use_remote=use_remote,
-                schema_url=schema_url_env,
-                local_fallback=True
+                use_remote=use_remote, schema_url=schema_url_env, local_fallback=True
             )
         except Exception as e:
             safe_log("error", f"Failed to load schema: {e}")
@@ -290,7 +292,12 @@ def collect_sparql_data(
     for variable in variables_to_describe:
         try:
             result_df = _process_variable_query(
-                endpoint, query_template, variable, variable_property, schema, use_schema
+                endpoint,
+                query_template,
+                variable,
+                variable_property,
+                schema,
+                use_schema,
             )
             if not result_df.empty:
                 if intermediate_df.empty:
