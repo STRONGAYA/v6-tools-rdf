@@ -139,12 +139,13 @@ The library now supports dynamic SPARQL predicate path building based on the AYA
 
 ### Using Schema-Based Queries
 
-To use schema-based query generation, set `use_schema=True`:
+To use schema-based query generation, set `use_schema=True`. When using schema-based queries, the `variable_property` parameter is optional as the predicate paths are built automatically from the schema:
 
 ```python
 from vantage6_strongaya_rdf.collect_sparql_data import collect_sparql_data
 
 # Fetch data with schema-based predicate paths
+# Note: variable_property is optional when use_schema=True
 df = collect_sparql_data(
     variables_to_analyse=['age_at_initial_diagnosis', 'gender'],
     query_type="single_column",
@@ -207,7 +208,7 @@ The following environment variables can be used to configure schema loading:
 - `USE_REMOTE_SCHEMA`: Set to `"true"` to fetch schema from GitHub (default: `"false"`)
 - `SCHEMA_URL`: Custom URL to fetch schema from (overrides default GitHub URL)
 - `SPARQL_ENDPOINT`: Override the default SPARQL endpoint
-- `VARIABLE_PROPERTY`: Override the default variable property predicate
+- `VARIABLE_PROPERTY`: Override the default variable property predicate (only used when `use_schema=False` or as fallback)
 - `MISSING_DATA_NOTATION`: Custom notation for missing data
 
 The various functions are available through `pip install` for debugging and testing purposes.

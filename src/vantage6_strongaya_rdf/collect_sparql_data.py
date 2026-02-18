@@ -222,7 +222,7 @@ def collect_sparql_data(
     variables_to_describe: List[str],
     query_type: str = "single_column",
     endpoint: str = "http://localhost:7200/repositories/userRepo",
-    variable_property: str = "dbo:has_column",
+    variable_property: Optional[str] = None,
     missing_data_notation: str = "",
     use_schema: bool = False,
     schema_url: Optional[str] = None,
@@ -239,7 +239,7 @@ def collect_sparql_data(
                                   Defaults to "http://localhost:7200/repositories/userRepo".
         variable_property (str, optional): The property (or predicate) used to identify variables in the SPARQL query.
                                            A property specified in the environment variables will be prioritised.
-                                           Defaults to "dbo:has_column".
+                                           Only required when use_schema is False. Defaults to "dbo:has_column" if not provided.
         missing_data_notation (str, optional): The notation used to represent missing data in the DataFrame.
                                                A notation specified in the environment variables will be prioritised.
                                                Defaults to pd.NA.
@@ -253,6 +253,11 @@ def collect_sparql_data(
     """
     # Retrieve environment variables - prioritise them over defaults as local setups might e.g. have different endpoints
     endpoint = get_env_var("SPARQL_ENDPOINT", endpoint)
+    
+    # Set default for variable_property if not provided
+    if variable_property is None:
+        variable_property = "dbo:has_column"
+    
     variable_property = get_env_var("VARIABLE_PROPERTY", variable_property)
     missing_data_notation = get_env_var("MISSING_DATA_NOTATION", missing_data_notation)
     
