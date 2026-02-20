@@ -59,6 +59,7 @@ WHERE {
             dbo:has_cell/dbo:has_value ?value .
 
       FILTER STRSTARTS(STR(?mainClass), STR(PLACEHOLDER_ONTOLOGY_1))
+      BIND(STRAFTER(STR(?mainClass), STR(PLACEHOLDER_ONTOLOGY_1)) AS ?mainClassCode)
 
       OPTIONAL {
         ?attr rdf:type ?subClass .
@@ -87,6 +88,7 @@ WHERE {
              dbo:has_cell/dbo:has_value ?value2 .
 
       FILTER STRSTARTS(STR(?mainClass2), STR(PLACEHOLDER_ONTOLOGY_2))
+      BIND(STRAFTER(STR(?mainClass2), STR(PLACEHOLDER_ONTOLOGY_2)) AS ?mainClassCode2)
 
       OPTIONAL {
         ?attr2 rdf:type ?subClass2 .
