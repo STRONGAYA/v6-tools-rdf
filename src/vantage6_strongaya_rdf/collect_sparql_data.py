@@ -209,6 +209,11 @@ def _process_variable_query(
         if "patientID" in result_df.columns:
             result_df["patient_id"] = result_df["patientID"]
             result_df.drop(columns=["patientID"], inplace=True)
+            # Convert patient_id to numeric if possible for proper sorting
+            try:
+                result_df["patient_id"] = pd.to_numeric(result_df["patient_id"])
+            except (ValueError, TypeError):
+                pass  # Keep as string if conversion fails
         else:
             result_df["patient_id"] = result_df.index
 
@@ -314,5 +319,9 @@ def collect_sparql_data(
 
     # Replace the missing value notation to prevent TypeErrors
     intermediate_df = intermediate_df.replace(missing_data_notation, pd.NA)
+
+    # Sort by patient_id to ensure consistent ordering
+    if not intermediate_df.empty and "patient_id" in intermediate_df.columns:
+        intermediate_df = intermediate_df.sort_values("patient_id").reset_index(drop=True)
 
     return intermediate_df
