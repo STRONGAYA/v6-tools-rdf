@@ -11,7 +11,7 @@ PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 SELECT DISTINCT 
 	?patient
 	?patientID
-	?subClass 
+	(SAMPLE(?subClass) AS ?subClass)
 	(SAMPLE(?value) AS ?any_value)
 
 WHERE {      
@@ -38,4 +38,4 @@ WHERE {
         FILTER (!sameTerm(?subClass, ?main_class))
     }
 }
-GROUP BY ?patient ?patientID ?subClass
+GROUP BY ?patient ?patientID
