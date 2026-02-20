@@ -46,7 +46,7 @@ WHERE {
     SELECT
         ?p1
         ?patientID
-        (SAMPLE(?subClass) AS ?subClass)
+        ?subClass 
         (SAMPLE(?value) AS ?any_value)
     WHERE {
       ?p1 sio:SIO_000673 ?idNode1 .
@@ -68,7 +68,7 @@ WHERE {
         FILTER(!sameTerm(?subClass, ?mainClass))
       }
     }
-    GROUP BY ?p1 ?patientID
+    GROUP BY ?p1 ?patientID ?subClass
   }
 
   # 3) AGGREGATE SECOND ATTRIBUTE
@@ -76,7 +76,7 @@ WHERE {
     SELECT
         ?p2
         ?patientID2
-        (SAMPLE(?subClass2) AS ?subClass2)
+        ?subClass2
         (SAMPLE(?value2) AS ?any_value2)
     WHERE {
       ?p2 sio:SIO_000673 ?idNode2 .
@@ -97,6 +97,6 @@ WHERE {
         FILTER(!sameTerm(?subClass2, ?mainClass2))
       }
     }
-    GROUP BY ?p2 ?patientID2
+    GROUP BY ?p2 ?patientID2 ?subClass2
   }
 }
