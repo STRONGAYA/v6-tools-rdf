@@ -64,6 +64,7 @@ class TestSchemaParser:
         assert path.startswith("(")
         assert path.endswith(")*")
         assert "|" in path  # Should contain multiple predicates
+        assert "dbo:has_column" in path  # Should include dbo:has_column
 
     def test_build_predicate_path_with_intermediate_class(self):
         """Test building predicate path for variable with intermediate class."""
@@ -135,6 +136,33 @@ class TestSchemaParser:
         assert params["predicate_path"].startswith("(")
         assert params["predicate_path"].endswith(")*")
 
+    def test_get_variable_query_params_by_class_code(self):
+        """Test looking up query parameters using class code instead of variable name."""
+        params = get_variable_query_params("ncit:C28421", self.schema)
+
+        # Should find biological_sex by class code
+        assert params != {}
+        assert params["main_class"] == "ncit:C28421"
+        assert params["ontology_prefix"] == "ncit:"
+        assert params["predicate_path"].startswith("(")
+        assert params["predicate_path"].endswith(")*")
+
+    def test_get_variable_query_params_by_class_code_numerical(self):
+        """Test looking up query parameters using class code for numerical variable."""
+        params = get_variable_query_params("ncit:C156420", self.schema)
+
+        # Should find age_at_initial_diagnosis by class code
+        assert params != {}
+        assert params["main_class"] == "ncit:C156420"
+        assert params["ontology_prefix"] == "ncit:"
+
+    def test_predicate_path_includes_dbo_has_column(self):
+        """Test that predicate paths include dbo:has_column for database ontology compatibility."""
+        path = build_predicate_path("biological_sex", self.schema)
+
+        assert "dbo:has_column" in path
+        assert "sio:SIO_000008" in path
+
     def test_get_variable_query_params_nonexistent(self):
         """Test getting query parameters for non-existent variable."""
         params = get_variable_query_params("nonexistent_variable", self.schema)
@@ -155,6 +183,7 @@ class TestSchemaParser:
         assert path.startswith("(")
         assert path.endswith(")*")
         # Verify expected predicates are in the path with proper namespace prefix
+        assert "dbo:has_column" in path, f"Expected 'dbo:has_column' in path: {path}"
         assert "sio:SIO_000255" in path, f"Expected 'sio:SIO_000255' in path: {path}"
         assert "sio:SIO_000008" in path, f"Expected 'sio:SIO_000008' in path: {path}"
         # Verify pipe separator between predicates

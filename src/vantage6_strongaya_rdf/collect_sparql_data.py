@@ -226,6 +226,133 @@ def _process_variable_query(
         return pd.DataFrame(columns=["patient_id", variable])
 
 
+def _process_multi_column_query(
+    endpoint: str,
+    query_template: str,
+    variables: List[str],
+    variable_property: str,
+    schema: Optional[dict] = None,
+    use_schema: bool = False,
+) -> pd.DataFrame:
+    """
+    Process the multi-column SPARQL query for two variables in a single query.
+
+    The multi_column template fetches both variables together, returning combined
+    results with subClass/any_value for the first variable and subClass2/any_value2
+    for the second.
+
+    Args:
+        endpoint (str): The SPARQL endpoint URL.
+        query_template (str): The multi-column SPARQL query template.
+        variables (List[str]): The two variable names to query.
+        variable_property (str): Fallback predicate property.
+        schema (Optional[dict]): The JSON-LD schema dictionary.
+        use_schema (bool): Whether to use schema-based predicate path generation.
+
+    Returns:
+        pd.DataFrame: The DataFrame containing the combined query results.
+    """
+    if len(variables) != 2:
+        raise UserInputError("Multi-column query requires exactly 2 variables.")
+
+    var1, var2 = variables
+
+    # Check for naughty words in both variables
+    for variable in [var1, var2]:
+        ontology_part = variable.split(":")[0] + ":"
+        if any(
+            word in (variable, ontology_part, variable_property)
+            for word in NAUGHTY_WORD_LIST
+        ):
+            raise UserInputError(
+                "Potentially dangerous input detected in variable, ontology part, "
+                "or variable property."
+            )
+
+    # Build query parameters for each variable
+    query = query_template
+    for idx, variable in enumerate([var1, var2], start=1):
+        suffix = f"_{idx}"
+        ontology_part = variable.split(":")[0] + ":"
+
+        if use_schema and schema:
+            query_params = get_variable_query_params(variable, schema)
+            if query_params:
+                predicate_path = query_params.get("predicate_path", variable_property)
+                main_class = query_params.get("main_class", variable)
+                ontology_prefix = query_params.get("ontology_prefix", ontology_part)
+            else:
+                safe_log(
+                    "warning",
+                    f"Could not get query params for {variable} from schema, "
+                    "using fallback",
+                )
+                predicate_path = variable_property
+                main_class = variable
+                ontology_prefix = ontology_part
+        else:
+            predicate_path = variable_property
+            main_class = variable
+            ontology_prefix = ontology_part
+
+        query = (
+            query.replace(f"PLACEHOLDER_CLASS{suffix}", main_class)
+            .replace(f"PLACEHOLDER_ONTOLOGY{suffix}", ontology_prefix)
+            .replace(f"PLACEHOLDER_PREDICATE_PATH{suffix}", predicate_path)
+        )
+
+    safe_log("info", f"Posting multi-column SPARQL query for {var1} and {var2}.")
+    result = post_sparql_query(endpoint=endpoint, query=query)
+
+    if not result:
+        return pd.DataFrame(columns=["patient_id", var1, var2])
+
+    result_df = pd.DataFrame(result)
+
+    # Drop patient URI columns
+    for col in ["p1", "p2"]:
+        if col in result_df.columns:
+            result_df.drop(columns=[col], inplace=True)
+
+    # Use patientID if available, otherwise use index
+    if "patientID" in result_df.columns:
+        result_df["patient_id"] = result_df["patientID"]
+        result_df.drop(columns=["patientID"], inplace=True)
+        try:
+            result_df["patient_id"] = pd.to_numeric(result_df["patient_id"])
+        except (ValueError, TypeError):
+            pass
+    else:
+        result_df["patient_id"] = result_df.index
+
+    # Process first variable: subClass + any_value -> var1
+    if "subClass" in result_df.columns:
+        result_df.rename(columns={"subClass": "sub_class"}, inplace=True)
+    result_df = extract_subclass_info(result_df, var1)
+
+    # Process second variable: subClass2 + any_value2 -> var2
+    if "subClass2" in result_df.columns and "any_value2" in result_df.columns:
+        result_df[var2] = result_df.apply(
+            lambda row: (
+                row["any_value2"]
+                if pd.isna(row.get("subClass2")) or row.get("subClass2") == ""
+                else row["subClass2"]
+            ),
+            axis=1,
+        )
+        cols_to_drop = ["subClass2", "any_value2"]
+        result_df.drop(
+            columns=[c for c in cols_to_drop if c in result_df.columns],
+            inplace=True,
+        )
+    elif "any_value2" in result_df.columns:
+        result_df.rename(columns={"any_value2": var2}, inplace=True)
+        if "subClass2" in result_df.columns:
+            result_df.drop(columns=["subClass2"], inplace=True)
+
+    return result_df
+
+
 def collect_sparql_data(
     variables_to_describe: List[str],
     query_type: str = "single_column",
@@ -287,32 +414,52 @@ def collect_sparql_data(
 
     if query_type == "single_column":
         query_template = _load_query_template("single_column")
+
+        intermediate_df = pd.DataFrame(columns=["patient_id", "sub_class", "value"])
+
+        for variable in variables_to_describe:
+            try:
+                result_df = _process_variable_query(
+                    endpoint,
+                    query_template,
+                    variable,
+                    variable_property,
+                    schema,
+                    use_schema,
+                )
+                if not result_df.empty:
+                    if intermediate_df.empty:
+                        intermediate_df = result_df
+                    else:
+                        intermediate_df = pd.merge(
+                            intermediate_df,
+                            result_df,
+                            on="patient_id",
+                            how="outer",
+                        )
+            except Exception as e:
+                raise AlgorithmError("error", f"Error processing {variable}: {e}")
+
     elif query_type == "multi_column":
         query_template = _load_query_template("multi_column")
-    else:
-        raise UserInputError(f"Unknown query type: {query_type}.")
 
-    intermediate_df = pd.DataFrame(columns=["patient_id", "sub_class", "value"])
-
-    for variable in variables_to_describe:
         try:
-            result_df = _process_variable_query(
+            intermediate_df = _process_multi_column_query(
                 endpoint,
                 query_template,
-                variable,
+                variables_to_describe,
                 variable_property,
                 schema,
                 use_schema,
             )
-            if not result_df.empty:
-                if intermediate_df.empty:
-                    intermediate_df = result_df
-                else:
-                    intermediate_df = pd.merge(
-                        intermediate_df, result_df, on="patient_id", how="outer"
-                    )
         except Exception as e:
-            raise AlgorithmError("error", f"Error processing {variable}: {e}")
+            raise AlgorithmError(
+                "error",
+                f"Error processing multi-column query: {e}",
+            )
+
+    else:
+        raise UserInputError(f"Unknown query type: {query_type}.")
 
     # Calculate the missing count using the specific notation
     add_missing_data_info(intermediate_df, missing_data_notation)
@@ -322,6 +469,8 @@ def collect_sparql_data(
 
     # Sort by patient_id to ensure consistent ordering
     if not intermediate_df.empty and "patient_id" in intermediate_df.columns:
-        intermediate_df = intermediate_df.sort_values("patient_id").reset_index(drop=True)
+        intermediate_df = intermediate_df.sort_values("patient_id").reset_index(
+            drop=True
+        )
 
     return intermediate_df

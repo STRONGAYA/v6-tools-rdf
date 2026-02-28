@@ -39,6 +39,7 @@ def partial_rdf_mock(
         list_of_variables,
         query_type=query_type,
         endpoint=df["endpoint"].iloc[0],
+        use_schema=True,
     )
 
     # Set the datatype to ensure conversions can be done properly
