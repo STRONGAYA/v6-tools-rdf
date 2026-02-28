@@ -36,5 +36,5 @@ dependencies = [
 [tool.setuptools]
 package-dir = { "" = "src" }
 packages = ["vantage6_strongaya_rdf"]
-package-data = { "vantage6_strongaya_rdf" = ["query_templates/*.rq"] }
+package-data = { "vantage6_strongaya_rdf" = ["query_templates/*.rq", "schemas/*.jsonld"] }
 

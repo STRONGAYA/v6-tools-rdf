@@ -5,23 +5,37 @@ PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 PREFIX owl: <http://www.w3.org/2002/07/owl#>
 PREFIX sio: <http://semanticscience.org/resource/>
 PREFIX sct: <http://snomed.info/id/>
-PREFIX strongaya: <http://strongaya.eu/>
+PREFIX strongaya: <https://strongaya.eu/>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 
-SELECT DISTINCT ?patient ?sub_class (SAMPLE(?value) AS ?any_value)
-WHERE {
-    ?patient PLACEHOLDER_PREDICATE ?sub_class_type .
-    ?sub_class_type rdf:type ?main_class .
-    ?sub_class_type rdf:type PLACEHOLDER_CLASS .
-    ?sub_class_type dbo:has_cell ?sub_cell .
-    ?sub_cell dbo:has_value ?value .
-    FILTER strStarts(str(?main_class), str(PLACEHOLDER_ONTOLOGY))
-    BIND(strafter(str(?main_class), str(PLACEHOLDER_ONTOLOGY)) AS ?main_class_code)
+SELECT DISTINCT 
+	?patient
+	?patientID
+	?subClass 
+	(SAMPLE(?value) AS ?any_value)
+
+WHERE {      
+    # ---------- Fetch patient ID from Table ----------
+    ?patient sio:SIO_000673 ?patientidNode.
+    ?patientidNode rdf:type ncit:C25364 ;
+    				dbo:has_cell/dbo:has_value ?patientID .
+    
+    # ---------- Fetch patient attribute from Table ----------   
+    ?patient PLACEHOLDER_PREDICATE_PATH ?sub_class_type .
+    ?sub_class_type rdf:type ?main_class ;
+    				  rdf:type PLACEHOLDER_CLASS ;
+                      dbo:has_cell ?subcell.
+    ?subcell dbo:has_value ?value .
+    
+ 	# ---------- subClass and values ----------
+    FILTER STRSTARTS(STR(?main_class), STR(PLACEHOLDER_ONTOLOGY))
+    BIND(STRAFTER(STR(?main_class), STR(PLACEHOLDER_ONTOLOGY)) AS ?patientTypeCode)
+
     OPTIONAL {
-        ?sub_cell rdf:type ?sub_class .
-        FILTER (strStarts(str(?sub_class), str(PLACEHOLDER_ONTOLOGY))||strStarts(str(?sub_class), str(PLACEHOLDER_ONTOLOGY))) .
-        ?sub_class rdfs:subClassOf ?main_class .
-        FILTER (!regex(str(?main_class), str(?sub_class))) .
+        ?subcell rdf:type ?subClass .
+        FILTER (STRSTARTS(STR(?subClass), STR(PLACEHOLDER_ONTOLOGY)) || STRSTARTS(STR(?subClass), STR(strongaya:))) .
+        ?subClass rdfs:subClassOf ?main_class .
+        FILTER (!sameTerm(?subClass, ?main_class))
     }
 }
-GROUP BY ?patient ?sub_class
+GROUP BY ?patient ?patientID ?subClass

@@ -5,6 +5,7 @@ Comprehensive Vantage6 integration testing.
 import pytest
 import json
 import pandas as pd
+import numpy as np
 
 from json import JSONDecodeError
 from io import StringIO
@@ -116,6 +117,18 @@ def test_configurations(rdf_store):
             },
             "query_type": "single_column",
         },
+        "standard_dataset_multi_column": {
+            "database_label": "rdf_store",  # Always use rdf_store as this refers to the RDF-store setup
+            "variables_to_extract": {
+                "ncit:C28421": {
+                    "datatype": "categorical",
+                },
+                "ncit:C156420": {
+                    "datatype": "numerical",
+                },
+            },
+            "query_type": "multi_column",
+        },
         "standard_dataset_bad_actor": {
             "database_label": "rdf_store",  # Always use rdf_store as this refers to the RDF-store setup
             "variables_to_extract": {
@@ -210,6 +223,7 @@ class TestAlgorithmComponent:
         "config_name",
         [
             "standard_dataset",
+            "standard_dataset_multi_column",
             "standard_dataset_incorrect_input",
             "standard_dataset_bad_actor",
             "standard_dataset_missing_variable_input",
@@ -382,12 +396,21 @@ def determine_result_acceptance(
         algorithm_kwargs = {}
 
     query_type = algorithm_kwargs.get("query_type")
-    if query_type == "single_column":
+    if query_type in ["single_column", "multi_column"]:
         csv_path = Path(__file__).parent.parent / "data" / "data.csv"
         if csv_path.exists():
-            df = pd.read_csv(csv_path)
-            df["patient_id"] = range(len(df))
-            expected_data = [df]
+            # Load the expected data directly - it's already in the correct format
+            expected_df = pd.read_csv(csv_path)
+            
+            # Convert string "None" to actual None/pd.NA to match our processing
+            expected_df["ncit:C28421"] = expected_df["ncit:C28421"].apply(
+                lambda x: None if x == "None" else x
+            )
+            
+            # Convert string "NaN" to actual NaN for numerical column
+            expected_df["ncit:C156420"] = pd.to_numeric(expected_df["ncit:C156420"], errors="coerce")
+            
+            expected_data = [expected_df]
         else:
             raise FileNotFoundError(f"Expected data file not found: {csv_path}")
     else:
@@ -424,9 +447,24 @@ def determine_result_acceptance(
                 return False
 
             try:
+                # Convert None to pd.NA in both dataframes for consistent comparison
+                result_df_filled = result_df.copy()
+                expected_df_filled = expected_df.copy()
+                
+                for col in result_df_filled.columns:
+                    if col != "patient_id":
+                        # Convert None to pd.NA in result
+                        result_df_filled[col] = result_df_filled[col].apply(
+                            lambda x: pd.NA if x is None else x
+                        )
+                        # Convert None to pd.NA in expected
+                        expected_df_filled[col] = expected_df_filled[col].apply(
+                            lambda x: pd.NA if x is None else x
+                        )
+                
                 pd.testing.assert_frame_equal(
-                    result_df,
-                    expected_df,
+                    result_df_filled,
+                    expected_df_filled,
                     check_dtype=False,
                     check_like=True,
                     rtol=1e-5,
@@ -436,6 +474,25 @@ def determine_result_acceptance(
             except AssertionError as e:
                 print(f"Validation failed: DataFrame {i} does not match expected data")
                 print(f"Difference details: {e}")
+                
+                # Debug: Show a sample of the differences
+                print("\nDebug info:")
+                print(f"Result shape: {result_df.shape}, Expected shape: {expected_df.shape}")
+                print(f"Result columns: {list(result_df.columns)}")
+                print(f"Expected columns: {list(expected_df.columns)}")
+                
+                # Show first few rows where they differ
+                if result_df.shape == expected_df.shape:
+                    diff_mask = result_df != expected_df
+                    if diff_mask.any().any():
+                        print("\nFirst few differing rows:")
+                        diff_rows = result_df[diff_mask.any(axis=1)].head()
+                        expected_diff_rows = expected_df[diff_mask.any(axis=1)].head()
+                        print("Result:")
+                        print(diff_rows)
+                        print("Expected:")
+                        print(expected_diff_rows)
+                
                 return False
 
         print(

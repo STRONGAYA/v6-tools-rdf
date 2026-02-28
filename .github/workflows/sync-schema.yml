@@ -1,0 +1,48 @@
+name: Sync AYA Cancer Schema
+
+on:
+  schedule:
+    # Run weekly on Monday at 9:00 AM UTC
+    - cron: '0 9 * * 1'
+  workflow_dispatch:  # Allow manual trigger
+
+permissions:
+  contents: write
+  pull-requests: write
+
+jobs:
+  sync-schema:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Download latest schema
+        run: |
+          curl -s https://raw.githubusercontent.com/STRONGAYA/AYA-cancer-semantic-map/refs/heads/main/AYA_cancer_schema.jsonld \
+            -o /tmp/new_schema.jsonld
+
+      - name: Check for changes
+        id: check_changes
+        run: |
+          if ! cmp -s /tmp/new_schema.jsonld src/vantage6_strongaya_rdf/schemas/AYA_cancer_schema.jsonld; then
+            echo "changes=true" >> $GITHUB_OUTPUT
+            cp /tmp/new_schema.jsonld src/vantage6_strongaya_rdf/schemas/AYA_cancer_schema.jsonld
+          else
+            echo "changes=false" >> $GITHUB_OUTPUT
+          fi
+
+      - name: Create Pull Request
+        if: steps.check_changes.outputs.changes == 'true'
+        uses: peter-evans/create-pull-request@v5
+        with:
+          commit-message: 'chore: sync AYA cancer schema from upstream'
+          title: 'chore: Update AYA cancer schema'
+          body: |
+            This PR updates the bundled AYA cancer schema to the latest version from upstream repository.
+            
+            **Source:** https://github.com/STRONGAYA/AYA-cancer-semantic-map/blob/main/AYA_cancer_schema.jsonld
+            
+            Please review the changes before merging.
+          branch: sync-schema-${{ github.run_number }}
+          delete-branch: true
