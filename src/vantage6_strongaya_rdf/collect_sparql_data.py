@@ -22,7 +22,7 @@ from vantage6.algorithm.tools.util import get_env_var
 from vantage6_strongaya_general.miscellaneous import safe_log
 
 from .sparql_client import post_sparql_query
-from .data_processing import add_missing_data_info, extract_subclass_info
+from .data_processing import add_missing_data_info, extract_subclass_info, clean_null_values
 from .schema_loader import load_schema
 from .schema_parser import get_variable_query_params
 
@@ -117,13 +117,17 @@ def _load_query_template(query_name: str) -> str:
         str: The SPARQL query template.
     """
     try:
-        with (
-            resources.files("vantage6_strongaya_rdf")
-            .joinpath("query_templates")
-            .joinpath(f"{query_name}.rq")
-            .open("r") as file
-        ):
-            return file.read()
+        # Use compatible importlib.resources syntax for Python 3.8
+        from importlib.resources import files, as_file
+        
+        # Get the package resource
+        package = files("vantage6_strongaya_rdf")
+        template_path = package.joinpath("query_templates").joinpath(f"{query_name}.rq")
+        
+        # Read the file content
+        with as_file(template_path) as path:
+            with open(path, "r") as file:
+                return file.read()
     except Exception as e:
         safe_log("error", f"Error reading SPARQL query file: {e}.")
         return ""
@@ -221,7 +225,7 @@ def _process_variable_query(
         if "subClass" in result_df.columns:
             result_df.rename(columns={"subClass": "sub_class"}, inplace=True)
 
-        return extract_subclass_info(result_df, variable)
+        return clean_null_values(extract_subclass_info(result_df, variable))
     else:
         return pd.DataFrame(columns=["patient_id", variable])
 
@@ -351,6 +355,9 @@ def _process_multi_column_query(
         result_df.rename(columns={"any_value2": var2}, inplace=True)
         if "subClass2" in result_df.columns:
             result_df.drop(columns=["subClass2"], inplace=True)
+
+    # Clean NULL values to handle string representations like "['NULL']"
+    result_df = clean_null_values(result_df)
 
     return result_df
 
