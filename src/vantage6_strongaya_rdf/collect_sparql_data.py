@@ -253,7 +253,9 @@ def _process_multi_column_query(
         pd.DataFrame: The DataFrame containing the combined query results.
     """
     if len(variables) != 2:
-        raise UserInputError("Multi-column query requires exactly 2 variables.")
+        raise UserInputError(
+            f"Multi-column query requires exactly 2 variables, but {len(variables)} were provided."
+        )
 
     var1, var2 = variables
 
