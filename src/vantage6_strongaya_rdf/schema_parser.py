@@ -124,19 +124,54 @@ def build_predicate_path(variable_name: str, schema: dict) -> str:
         safe_log("warning", f"No predicates found for variable '{variable_name}'")
         return ""
 
-    # Format: (predicate1|predicate2|predicate3)*
+    # Format: (predicate1|predicate2)*
     path = "(" + "|".join(unique_predicates) + ")*"
 
     safe_log("info", f"Built predicate path for '{variable_name}': {path}")
     return path
 
 
+def _resolve_variable_name(variable_name: str, schema: dict) -> str:
+    """
+    Resolve a variable identifier to its schema variable name.
+
+    Supports lookup by:
+    1. Direct variable name (e.g., "biological_sex")
+    2. Class code (e.g., "ncit:C28421") - reverse lookup by class
+
+    Args:
+        variable_name: Variable name or class code
+        schema: The full schema dictionary
+
+    Returns:
+        The resolved schema variable name, or empty string if not found
+    """
+    variables = schema.get("schema", {}).get("variables", {})
+
+    # Direct name lookup
+    if variable_name in variables:
+        return variable_name
+
+    # Reverse lookup by class code
+    for var_name, var_def in variables.items():
+        if var_def.get("class") == variable_name:
+            safe_log(
+                "info",
+                f"Resolved class code '{variable_name}' to variable '{var_name}'",
+            )
+            return var_name
+
+    return ""
+
+
 def get_variable_query_params(variable_name: str, schema: dict) -> dict:
     """
     Get all query parameters for a variable.
 
+    Supports lookup by variable name or class code (e.g., "ncit:C28421").
+
     Args:
-        variable_name: Name of the variable
+        variable_name: Name of the variable or class code
         schema: The full schema dictionary
 
     Returns:
@@ -147,13 +182,17 @@ def get_variable_query_params(variable_name: str, schema: dict) -> dict:
             "ontology_prefix": "ncit:"
         }
     """
-    variables = schema.get("schema", {}).get("variables", {})
+    resolved_name = _resolve_variable_name(variable_name, schema)
 
-    if variable_name not in variables:
-        safe_log("error", f"Variable '{variable_name}' not found in schema")
+    if not resolved_name:
+        safe_log(
+            "warning",
+            f"Variable '{variable_name}' not found in schema by name or class",
+        )
         return {}
 
-    var_def = variables[variable_name]
+    variables = schema.get("schema", {}).get("variables", {})
+    var_def = variables[resolved_name]
 
     # Get main class
     main_class = var_def.get("class", "")
@@ -164,7 +203,7 @@ def get_variable_query_params(variable_name: str, schema: dict) -> dict:
         ontology_prefix = main_class.split(":")[0] + ":"
 
     # Build predicate path
-    predicate_path = build_predicate_path(variable_name, schema)
+    predicate_path = build_predicate_path(resolved_name, schema)
 
     return {
         "predicate_path": predicate_path,

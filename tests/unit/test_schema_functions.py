@@ -64,6 +64,8 @@ class TestSchemaParser:
         assert path.startswith("(")
         assert path.endswith(")*")
         assert "|" in path  # Should contain multiple predicates
+        # dbo:has_column is only the fallback, not mixed into schema-derived paths
+        assert "dbo:has_column" not in path
 
     def test_build_predicate_path_with_intermediate_class(self):
         """Test building predicate path for variable with intermediate class."""
@@ -135,6 +137,35 @@ class TestSchemaParser:
         assert params["predicate_path"].startswith("(")
         assert params["predicate_path"].endswith(")*")
 
+    def test_get_variable_query_params_by_class_code(self):
+        """Test looking up query parameters using class code instead of variable name."""
+        params = get_variable_query_params("ncit:C28421", self.schema)
+
+        # Should find biological_sex by class code
+        assert params != {}
+        assert params["main_class"] == "ncit:C28421"
+        assert params["ontology_prefix"] == "ncit:"
+        assert params["predicate_path"].startswith("(")
+        assert params["predicate_path"].endswith(")*")
+
+    def test_get_variable_query_params_by_class_code_numerical(self):
+        """Test looking up query parameters using class code for numerical variable."""
+        params = get_variable_query_params("ncit:C156420", self.schema)
+
+        # Should find age_at_initial_diagnosis by class code
+        assert params != {}
+        assert params["main_class"] == "ncit:C156420"
+        assert params["ontology_prefix"] == "ncit:"
+
+    def test_predicate_path_does_not_include_dbo_has_column(self):
+        """Test that schema-derived predicate paths do NOT include dbo:has_column.
+        dbo:has_column is only used as a fallback when no schema predicates are found.
+        """
+        path = build_predicate_path("biological_sex", self.schema)
+
+        assert "dbo:has_column" not in path
+        assert "sio:SIO_000008" in path
+
     def test_get_variable_query_params_nonexistent(self):
         """Test getting query parameters for non-existent variable."""
         params = get_variable_query_params("nonexistent_variable", self.schema)
@@ -157,6 +188,10 @@ class TestSchemaParser:
         # Verify expected predicates are in the path with proper namespace prefix
         assert "sio:SIO_000255" in path, f"Expected 'sio:SIO_000255' in path: {path}"
         assert "sio:SIO_000008" in path, f"Expected 'sio:SIO_000008' in path: {path}"
+        # dbo:has_column is only the fallback, not mixed into schema-derived paths
+        assert (
+            "dbo:has_column" not in path
+        ), f"dbo:has_column should not be in schema path: {path}"
         # Verify pipe separator between predicates
         assert "|" in path, f"Expected pipe separator in path: {path}"
 
