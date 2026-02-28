@@ -64,7 +64,8 @@ class TestSchemaParser:
         assert path.startswith("(")
         assert path.endswith(")*")
         assert "|" in path  # Should contain multiple predicates
-        assert "dbo:has_column" in path  # Should include dbo:has_column
+        # dbo:has_column is only the fallback, not mixed into schema-derived paths
+        assert "dbo:has_column" not in path
 
     def test_build_predicate_path_with_intermediate_class(self):
         """Test building predicate path for variable with intermediate class."""
@@ -156,11 +157,13 @@ class TestSchemaParser:
         assert params["main_class"] == "ncit:C156420"
         assert params["ontology_prefix"] == "ncit:"
 
-    def test_predicate_path_includes_dbo_has_column(self):
-        """Test that predicate paths include dbo:has_column for database ontology compatibility."""
+    def test_predicate_path_does_not_include_dbo_has_column(self):
+        """Test that schema-derived predicate paths do NOT include dbo:has_column.
+        dbo:has_column is only used as a fallback when no schema predicates are found.
+        """
         path = build_predicate_path("biological_sex", self.schema)
 
-        assert "dbo:has_column" in path
+        assert "dbo:has_column" not in path
         assert "sio:SIO_000008" in path
 
     def test_get_variable_query_params_nonexistent(self):
@@ -183,9 +186,12 @@ class TestSchemaParser:
         assert path.startswith("(")
         assert path.endswith(")*")
         # Verify expected predicates are in the path with proper namespace prefix
-        assert "dbo:has_column" in path, f"Expected 'dbo:has_column' in path: {path}"
         assert "sio:SIO_000255" in path, f"Expected 'sio:SIO_000255' in path: {path}"
         assert "sio:SIO_000008" in path, f"Expected 'sio:SIO_000008' in path: {path}"
+        # dbo:has_column is only the fallback, not mixed into schema-derived paths
+        assert (
+            "dbo:has_column" not in path
+        ), f"dbo:has_column should not be in schema path: {path}"
         # Verify pipe separator between predicates
         assert "|" in path, f"Expected pipe separator in path: {path}"
 

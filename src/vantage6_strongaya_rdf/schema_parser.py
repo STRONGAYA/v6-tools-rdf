@@ -119,17 +119,12 @@ def build_predicate_path(variable_name: str, schema: dict) -> str:
             seen.add(pred)
             unique_predicates.append(pred)
 
-    # Include dbo:has_column as it serves the same traversal purpose as
-    # sio:SIO_000255 in database ontology representations
-    if "dbo:has_column" not in unique_predicates:
-        unique_predicates.insert(0, "dbo:has_column")
-
     # Build the SPARQL property path
     if not unique_predicates:
         safe_log("warning", f"No predicates found for variable '{variable_name}'")
         return ""
 
-    # Format: (predicate1|predicate2|predicate3)*
+    # Format: (predicate1|predicate2)*
     path = "(" + "|".join(unique_predicates) + ")*"
 
     safe_log("info", f"Built predicate path for '{variable_name}': {path}")
