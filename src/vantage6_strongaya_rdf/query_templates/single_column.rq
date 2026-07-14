@@ -5,7 +5,7 @@ PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
 PREFIX owl: <http://www.w3.org/2002/07/owl#>
 PREFIX sio: <http://semanticscience.org/resource/>
 PREFIX sct: <http://snomed.info/id/>
-PREFIX strongaya: <http://strongaya.eu/>
+PREFIX strongaya: <https://strongaya.eu/>
 PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
 
 SELECT DISTINCT ?patient ?sub_class (SAMPLE(?value) AS ?any_value)
