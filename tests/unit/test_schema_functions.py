@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 from vantage6_strongaya_rdf.schema_loader import load_schema  # noqa: E402
 from vantage6_strongaya_rdf.schema_parser import (  # noqa: E402
     build_predicate_path,
+    get_schema_prefixes,
     get_variable_query_params,
     resolve_intermediate_class_path,
 )
@@ -195,6 +196,49 @@ class TestSchemaParser:
         # Verify pipe separator between predicates
         assert "|" in path, f"Expected pipe separator in path: {path}"
 
+    def test_get_schema_prefixes_returns_dict(self):
+        """Test that get_schema_prefixes returns a dictionary."""
+        prefixes = get_schema_prefixes(self.schema)
+
+        assert isinstance(prefixes, dict)
+        assert len(prefixes) > 0
+
+    def test_get_schema_prefixes_contains_expected_prefixes(self):
+        """Test that get_schema_prefixes returns expected common prefixes."""
+        prefixes = get_schema_prefixes(self.schema)
+
+        # Check for prefixes that should be in the schema
+        expected_prefixes = ["ncit", "sio", "mesh", "roo"]
+        for prefix in expected_prefixes:
+            assert prefix in prefixes, f"Expected prefix '{prefix}' not found in {list(prefixes.keys())}"
+
+    def test_get_schema_prefixes_values_are_strings(self):
+        """Test that all prefix values are strings (URIs)."""
+        prefixes = get_schema_prefixes(self.schema)
+
+        for key, value in prefixes.items():
+            assert isinstance(value, str), f"Prefix '{key}' value is not a string: {type(value)}"
+            assert value.startswith("http"), f"Prefix '{key}' value does not look like a URI: {value}"
+
+    def test_get_schema_prefixes_handles_empty_schema(self):
+        """Test get_schema_prefixes with empty schema."""
+        prefixes = get_schema_prefixes({})
+
+        assert isinstance(prefixes, dict)
+        assert len(prefixes) == 0
+
+    def test_get_schema_prefixes_merges_context_and_schema_prefixes(self):
+        """Test that prefixes from both @context and schema.prefixes are merged."""
+        prefixes = get_schema_prefixes(self.schema)
+
+        # Both @context and schema.prefixes should be included
+        # @context has: sio, ncit, mesh, roo, xsd, schema, mapping
+        # schema.prefixes has: mesh, sio, ncit, roo, strongaya, sct, gsso
+        # Result should include all unique prefixes
+        assert "strongaya" in prefixes
+        assert "sct" in prefixes
+        assert "gsso" in prefixes
+
 
 if __name__ == "__main__":
     # Run tests with pytest if available, otherwise just import to check for errors
@@ -204,4 +248,5 @@ if __name__ == "__main__":
         pytest.main([__file__, "-v"])
     except ImportError:
         print("pytest not available, running basic import check")
-        print("All imports successful!")
+        
+print("All imports successful!")
