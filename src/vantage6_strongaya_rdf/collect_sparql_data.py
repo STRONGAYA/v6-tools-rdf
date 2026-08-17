@@ -471,7 +471,7 @@ def _process_multi_column_query(
 
 
 def collect_sparql_data(
-    variables_to_describe: List[str],
+    variables_to_extract: List[str],
     query_type: str = "single_column",
     endpoint: str = "http://localhost:7200/repositories/userRepo",
     variable_property: Optional[str] = None,
@@ -483,7 +483,8 @@ def collect_sparql_data(
     Collect data from SPARQL endpoints for specified variables.
 
     Args:
-        variables_to_describe (List[str]): List of variable names to their properties.
+        variables_to_extract (List[str]): List of variables to extract; either the schema's
+                                          variable names or their class codes.
         query_type (str, optional): The type of query to execute. Supports 'single_column' and 'multi_column'.
                                     Defaults to 'single_column'.
         endpoint (str, optional): The SPARQL endpoint URL.
@@ -499,6 +500,8 @@ def collect_sparql_data(
         use_schema (bool, optional): Whether to use schema-based predicate path generation.
                                      Defaults to False for backward compatibility.
         schema_url (str, optional): Custom URL to fetch schema from. Only used if use_schema is True.
+                                    A URL specified in the environment variables will be prioritised,
+                                    as will a release tag specified through SCHEMA_TAG.
 
     Returns:
         pd.DataFrame: A combined DataFrame containing all retrieved data,
@@ -544,7 +547,7 @@ def collect_sparql_data(
 
         intermediate_df = pd.DataFrame(columns=["patient_id", "sub_class", "value"])
 
-        for variable in variables_to_describe:
+        for variable in variables_to_extract:
             try:
                 result_df = _process_variable_query(
                     endpoint,
@@ -576,7 +579,7 @@ def collect_sparql_data(
             intermediate_df = _process_multi_column_query(
                 endpoint,
                 query_template,
-                variables_to_describe,
+                variables_to_extract,
                 variable_property,
                 schema,
                 use_schema,

@@ -55,13 +55,13 @@ algorithm.
 For the `requirements.txt` file, you can add the following line to the file:
 
 ```
-git+https://github.com/STRONGAYA/v6-tools-rdf.git@v1.0.1
+git+https://github.com/STRONGAYA/v6-tools-rdf.git@v1.1.0
 ```
 
 For the `setup.py` file, you can add the following line to the `install_requires` list:
 
 ```python
-        "vantage6-strongaya-rdf @ git+https://github.com/STRONGAYA/v6-tools-rdf.git@v1.0.1",
+        "vantage6-strongaya-rdf @ git+https://github.com/STRONGAYA/v6-tools-rdf.git@v1.1.0",
 ```
 
 The algorithm's `setup.py`, particularly the `install_requirements`, section file should then look something like this:
@@ -88,7 +88,7 @@ setup(
         'vantage6-algorithm-tools',
         'numpy',
         'pandas',
-        "vantage6-strongaya-rdf @ git+https://github.com/STRONGAYA/v6-tools-rdf.git@v1.0.1"
+        "vantage6-strongaya-rdf @ git+https://github.com/STRONGAYA/v6-tools-rdf.git@v1.1.0"
         # other dependencies
     ]
 )
@@ -109,12 +109,12 @@ from vantage6_strongaya_general.miscellaneous import safe_log
 from vantage6_strongaya_rdf.collect_sparql_data import collect_sparql_data
 
 
-def partial_general_statistics(variables_to_analyse: dict) -> dict:
+def partial_general_statistics(variables_to_extract: dict) -> dict:
     """
     Execute the partial algorithm for some modelling using RDF data.
 
     Args:
-        variables_to_analyse (list): List of variables to analyse.
+        variables_to_extract (list): List of variables to extract.
 
     Returns:
         dict: A dictionary containing the computed general statistics.
@@ -122,7 +122,7 @@ def partial_general_statistics(variables_to_analyse: dict) -> dict:
     safe_log("info", "Executing partial algorithm for some modelling using RDF data.")
 
     # Set datatypes for each variable
-    df = collect_sparql_data(variables_to_analyse, query_type="single_column",
+    df = collect_sparql_data(list(variables_to_extract.keys()), query_type="single_column",
                              endpoint="http://localhost:7200/repositories/userRepo",
                              )
 
@@ -147,27 +147,59 @@ from vantage6_strongaya_rdf.collect_sparql_data import collect_sparql_data
 # Fetch data with schema-based predicate paths
 # Note: variable_property is optional when use_schema=True
 df = collect_sparql_data(
-    variables_to_analyse=['age_at_initial_diagnosis', 'gender'],
+    variables_to_extract=['age_at_initial_diagnosis', 'gender'],
     query_type="single_column",
     endpoint="http://localhost:7200/repositories/userRepo",
     use_schema=True  # Enable schema-based path generation
 )
 ```
 
+Variables can be requested by their name in the schema (`'age_at_initial_diagnosis'`) or by
+their class code (`'ncit:C156420'`).
+
+The predicate paths follow the structure that the schema describes as an ordered sequence,
+for instance `sio:SIO_000255/sio:SIO_000008`. Variables that are nested within an
+intermediate class - the PROM, EHR and HCPROM containers - are resolved to the route
+towards the container and the hop into it, since the schema attaches such a container to
+the node of another variable.
+
+Besides the predicate paths, the following is derived from the schema:
+
+- **the ontology prefixes** that the queries declare, which keeps the queries from
+  diverging from the semantic map that they are built for. Only the prefixes that describe
+  the structure that the Triplifier produces (`dbo:`, `rdf:` and `rdfs:`) remain fixed;
+- **the patient's identifier**; its predicate and class are taken from the schema's
+  identifier variable.
+
 ### Schema Loading Options
 
-The library bundles a copy of the AYA cancer schema and uses it by default. You can also fetch the latest version from GitHub:
+The library bundles a copy of the AYA cancer schema and uses it by default. The bundled copy
+is the schema of a specific release of
+the [semantic map](https://github.com/STRONGAYA/AYA-cancer-semantic-map); the release that it
+originates from is recorded as `BUNDLED_SCHEMA_TAG` in `schema_loader.py` and logged whenever
+a schema is loaded.
 
 ```python
 # Use bundled schema (default, no network needed)
 df = collect_sparql_data(variables, use_schema=True)
 
-# Or fetch latest from GitHub (requires network access)
+# Or fetch the schema of the latest release (requires network access)
 # Set environment variable: USE_REMOTE_SCHEMA=true
+
+# Or pin a specific release of the semantic map
+# Set environment variable: SCHEMA_TAG=v2.0.1
 
 # Or use a custom schema URL
 # Set environment variable: SCHEMA_URL=https://your-custom-url/schema.jsonld
 ```
+
+Remote schemas are retrieved from a release rather than from the semantic map's main branch,
+so that a node always runs against a versioned schema. A loaded schema is validated on its
+structure; a document that does not describe any variables raises rather than silently
+degrading every variable to `dbo:has_column`.
+
+A weekly workflow synchronises the bundled schema with the latest release of the semantic
+map and opens a pull request for review.
 
 ### Direct Schema Access
 
@@ -191,22 +223,40 @@ print(f"Ontology prefix: {params['ontology_prefix']}")
 The library now supports multi-column queries for fetching multiple variables in a single query:
 
 ```python
-# Note: Multi-column queries are designed for specific use cases
-# and may require additional configuration
+# Note: Multi-column queries fetch exactly two variables in a single query
 df = collect_sparql_data(
-    variables_to_analyse=['variable1', 'variable2'],
+    variables_to_extract=['variable1', 'variable2'],
     query_type="multi_column",
     endpoint="http://localhost:7200/repositories/userRepo",
     use_schema=True
 )
 ```
 
+Both records are identified in the same manner, after which the two attributes are kept
+when their records describe the same patient:
+
+- a record of a linked table is identified by the identifier that its foreign key
+  (`dbo:fk_refers_to`) refers to;
+- a record of a flat table is identified by its own identifier;
+- a record whose identifier cannot be retrieved is identified by its own URI.
+
+Note that a multi-column query only yields the patients that hold both variables, whereas a
+single-column query yields the union of the patients of each variable.
+
+### Missing Patient Identifiers
+
+A record whose identifier cannot be retrieved is identified by its own URI rather than being
+dropped from the results, so that it is still observed and counted amongst the missing data.
+The number of records that fell back to their URI is reported as a warning; such records
+cannot be linked to the records of another table.
+
 ### Environment Variables
 
 The following environment variables can be used to configure schema loading:
 
-- `USE_REMOTE_SCHEMA`: Set to `"true"` to fetch schema from GitHub (default: `"false"`)
-- `SCHEMA_URL`: Custom URL to fetch schema from (overrides default GitHub URL)
+- `USE_REMOTE_SCHEMA`: Set to `"true"` to fetch the schema from GitHub (default: `"false"`)
+- `SCHEMA_TAG`: Release of the semantic map to fetch the schema from (default: its latest release)
+- `SCHEMA_URL`: Custom URL to fetch schema from (overrides the release URL)
 - `SPARQL_ENDPOINT`: Override the default SPARQL endpoint
 - `VARIABLE_PROPERTY`: Override the default variable property predicate (only used when `use_schema=False` or as fallback)
 - `MISSING_DATA_NOTATION`: Custom notation for missing data
@@ -231,6 +281,8 @@ tests/
 ├── unit/                                 # Unit tests for individual functions
 │   ├── test_library_functions.py         # Tests for library functions
 │   ├── test_schema_functions.py          # Tests for schema loader and parser
+│   ├── test_query_templates.py           # Tests for the construction of the queries
+│   ├── test_query_execution.py           # Tests that execute the queries on a synthetic graph
 ├── integration/                          # Integration tests
 │   └── test_vantage6_integration.py      # Data stratification workflows
 │   └── test_rdf_algorithm_integration.py # Vantage6 algorithm integration tests
@@ -249,8 +301,18 @@ tests/
 Install test dependencies:
 
 ```bash
-pip install pytest pytest-mock hypothesis faker
+pip install pytest pytest-mock hypothesis faker rdflib
 ```
+
+Or install the library's test dependencies directly:
+
+```bash
+pip install -e ".[test]"
+```
+
+`rdflib` is used to execute the generated SPARQL queries against a synthetic graph, which
+verifies the queries without an RDF-store; the tests that require it are skipped when it is
+not installed.
 
 ### Basic Test Execution
 

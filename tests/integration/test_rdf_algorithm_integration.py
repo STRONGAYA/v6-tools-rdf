@@ -49,10 +49,8 @@ def test_methods():
 
     DYNAMIC PARAMETER FILLING:
     Parameters set to None are automatically filled by test methods from configurations:
-    - "variables_to_describe": Filled from config['variables_to_describe_basic'] or
-    config['variables_to_describe_inlier_specific']
-    - "organisation_ids": Filled from config['organisation_subset']
-    - "variables_to_stratify": Filled from config['variables_to_stratify']
+    - "variables_to_extract": Filled from config['variables_to_extract']
+    - "query_type": Filled from config['query_type']
 
     EXAMPLES:
     - For statistical algorithms: {"central": {...}, "partial_general_statistics": {...}}
@@ -84,18 +82,16 @@ def test_configurations(rdf_store):
     CONFIGURATION STRUCTURE:
     Each configuration dict should contain:
     - 'database_label': String identifying the test database
-    - 'variables_to_describe_basic': Dict of variables for basic testing
-    - 'organisation_subset': List of organisation IDs to test with
-    - 'variables_to_stratify': Dict defining stratification parameters (optional)
+    - 'variables_to_extract': Dict of variables to extract, with their datatype
+    - 'query_type': The type of query to use ('single_column' or 'multi_column')
     - 'expected_failure': Boolean indicating if this config should fail
     - 'failure_reason': String describing why failure is expected
     - 'expected_error_type': Exception class or list of exception classes expected on failure
 
     DYNAMIC PARAMETER FILLING:
     These values are used to fill None parameters in method kwargs:
-    - 'variables_to_describe_basic' -> "variables_to_describe"
-    - 'organisation_subset' -> "organisation_ids"
-    - 'variables_to_stratify' -> "variables_to_stratify"
+    - 'variables_to_extract' -> "variables_to_extract"
+    - 'query_type' -> "query_type"
 
     EXAMPLE CONFIGURATION TYPES:
     - 'standard_dataset': Normal successful execution
