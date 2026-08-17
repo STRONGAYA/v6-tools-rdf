@@ -11,6 +11,7 @@ sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
 import pytest  # noqa: E402
 
+from vantage6_strongaya_rdf import schema_loader  # noqa: E402
 from vantage6_strongaya_rdf.schema_loader import (  # noqa: E402
     BUNDLED_SCHEMA_TAG,
     SCHEMA_URL,
@@ -38,6 +39,39 @@ IDENTIFIER_PREDICATE = "sio:SIO_000673"
 PROM_CLASS = "ncit:C177377"
 HCPROM_CLASS = "ncit:C142453"
 EHR_CLASS = "ncit:C142529"
+
+# A released semantic map that is newer than the one that the library bundles; its
+# version differs from the bundled one so that either document can be told apart
+REMOTE_SCHEMA = {
+    "@context": {"sio": "http://semanticscience.org/resource/"},
+    "version": "9.9.9",
+    "schema": {
+        "prefixes": {"ncit": "http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#"},
+        "variables": {
+            "identifier": {
+                "predicate": IDENTIFIER_PREDICATE,
+                "class": "ncit:C25364",
+            },
+            "biological_sex": {
+                "predicate": ATTRIBUTE_PREDICATE,
+                "class": "ncit:C28421",
+            },
+        },
+    },
+}
+
+# A document of the shape that an earlier revision of the semantic map had; it is
+# retrieved successfully but describes no variables that a query can be built from
+UNSUPPORTED_REMOTE_DOCUMENT = {
+    "endpoint": "http://localhost:7200/repositories/userRepo/statements",
+    "variable_info": {"identifier": {"predicate": IDENTIFIER_PREDICATE}},
+}
+
+# Tag of a release that is neither the bundled nor the most recent one
+PINNED_SCHEMA_TAG = "v1.2.3"
+
+# Tag of the release that the upstream repository publishes as its most recent one
+LATEST_SCHEMA_TAG = "v9.9.9"
 
 
 class TestSchemaLoader:
@@ -415,6 +449,241 @@ class TestSchemaParser:
         assert "strongaya" in prefixes
         assert "sct" in prefixes
         assert "gsso" in prefixes
+
+
+class StubResponse:
+    """Stand-in for the response of a request to the upstream repository."""
+
+    def __init__(self, payload, status_error=None):
+        self.payload = payload
+        self.status_error = status_error
+
+    def raise_for_status(self):
+        """Report an unsuccessful request the way that requests does."""
+        if self.status_error:
+            raise self.status_error
+
+    def json(self):
+        """Return the document that the response carries."""
+        return self.payload
+
+
+class StubRequests:
+    """Stand-in for the requests module that records what it is asked for.
+
+    Replacing the module altogether keeps these tests from reaching the network: a
+    request that the loader makes through another route would fail rather than
+    silently contact GitHub, which would make the suite depend on connectivity and
+    on the contents of the upstream repository.
+    """
+
+    def __init__(self, payload=None, error=None, status_error=None):
+        self.payload = payload
+        self.error = error
+        self.status_error = status_error
+        self.requested_urls = []
+        self.timeouts = []
+
+    def get(self, url, timeout=None):
+        """Serve the prepared response and record the request."""
+        self.requested_urls.append(url)
+        self.timeouts.append(timeout)
+        if self.error:
+            raise self.error
+        return StubResponse(self.payload, self.status_error)
+
+
+@pytest.fixture
+def upstream_repository(monkeypatch):
+    """Serve a prepared document instead of contacting the upstream repository."""
+
+    def serve(payload=None, error=None, status_error=None):
+        stub = StubRequests(payload=payload, error=error, status_error=status_error)
+        monkeypatch.setattr(schema_loader, "requests", stub)
+        return stub
+
+    return serve
+
+
+@pytest.fixture
+def latest_release(monkeypatch):
+    """Pin the tag that the most recent release is resolved to."""
+
+    def resolve_to(tag):
+        resolutions = []
+
+        def resolve_latest_schema_tag():
+            resolutions.append(tag)
+            return tag
+
+        monkeypatch.setattr(
+            schema_loader, "resolve_latest_schema_tag", resolve_latest_schema_tag
+        )
+        return resolutions
+
+    return resolve_to
+
+
+class TestRemoteSchemaLoading:
+    """Test the retrieval of a schema from a release of the semantic map.
+
+    Only the unsuccessful retrieval was covered previously, which meant that a
+    successful one - the very reason for the remote mode to exist - was never
+    verified: a loader that always returned the bundled document would have passed
+    the suite unnoticed.
+    """
+
+    def test_the_fetched_document_is_the_one_that_is_returned(
+        self, upstream_repository, latest_release
+    ):
+        """Test that the retrieved document is returned rather than the bundled one.
+
+        A node that opts into the remote mode does so to run against a newer semantic
+        map than the one that the library bundles; quietly returning the bundled
+        document would leave that node with a schema it did not ask for.
+        """
+        upstream_repository(payload=REMOTE_SCHEMA)
+        latest_release(LATEST_SCHEMA_TAG)
+
+        schema = load_schema(use_remote=True)
+
+        assert schema == REMOTE_SCHEMA
+        assert get_schema_version(schema) == "9.9.9"
+        # The bundled document is a different one, so the two cannot be confused
+        assert get_schema_version(schema) != get_schema_version(
+            load_schema(use_remote=False)
+        )
+
+    def test_the_latest_release_is_resolved_when_no_tag_is_given(
+        self, upstream_repository, latest_release
+    ):
+        """Test that the most recent release is the one that is requested.
+
+        Without a tag the loader has to determine which release is the most recent
+        one; requesting a branch or the bundled tag instead would keep a node on an
+        outdated semantic map indefinitely.
+        """
+        stub = upstream_repository(payload=REMOTE_SCHEMA)
+        resolutions = latest_release(LATEST_SCHEMA_TAG)
+
+        load_schema(use_remote=True)
+
+        assert resolutions == [LATEST_SCHEMA_TAG]
+        assert f"refs/tags/{LATEST_SCHEMA_TAG}" in stub.requested_urls[0]
+        # A branch is a moving target, whereas a release is a versioned contract
+        assert "refs/heads" not in stub.requested_urls[0]
+
+    def test_an_explicit_tag_pins_the_requested_release(
+        self, upstream_repository, latest_release
+    ):
+        """Test that a given tag is the release that is requested.
+
+        The tag is what the SCHEMA_TAG environment variable of a node feeds, so a
+        node that pins a release must not be moved onto another one; resolving the
+        most recent release regardless would defeat that configuration entirely.
+        """
+        stub = upstream_repository(payload=REMOTE_SCHEMA)
+        resolutions = latest_release(LATEST_SCHEMA_TAG)
+
+        load_schema(use_remote=True, schema_tag=PINNED_SCHEMA_TAG)
+
+        assert f"refs/tags/{PINNED_SCHEMA_TAG}" in stub.requested_urls[0]
+        # The most recent release is of no interest once a tag has been pinned
+        assert resolutions == []
+
+    def test_an_unresolvable_release_falls_back_to_the_bundled_tag(
+        self, upstream_repository, latest_release
+    ):
+        """Test that the bundled release is requested when none can be resolved.
+
+        The most recent release cannot be determined without connectivity to the
+        repository's API; the release that the library bundles is then the only tag
+        that is known to exist, which keeps the loader from requesting a URL that
+        holds no tag at all.
+        """
+        stub = upstream_repository(payload=REMOTE_SCHEMA)
+        latest_release(None)
+
+        load_schema(use_remote=True)
+
+        assert f"refs/tags/{BUNDLED_SCHEMA_TAG}" in stub.requested_urls[0]
+
+    def test_a_retrieved_document_of_an_unsupported_format_is_rejected(
+        self, upstream_repository, latest_release
+    ):
+        """Test that an unsupported document is rejected rather than accepted.
+
+        A request that succeeds says nothing about what it returned; an earlier
+        revision of the semantic map - or an error page of the repository - would
+        otherwise be used as if it were a schema, after which every variable would
+        silently fall back to the default variable property.
+        """
+        upstream_repository(payload=UNSUPPORTED_REMOTE_DOCUMENT)
+        latest_release(LATEST_SCHEMA_TAG)
+
+        with pytest.raises(Exception) as error:
+            load_schema(use_remote=True, local_fallback=False)
+
+        assert "local fallback is disabled" in str(error.value)
+        # The reason for the rejection remains legible in the error that arrives
+        assert "variables" in str(error.value)
+
+    def test_a_rejected_document_falls_back_to_the_bundled_schema(
+        self, upstream_repository, latest_release
+    ):
+        """Test that the bundled schema is used when a retrieved one is rejected.
+
+        A node that allows the fallback prefers a schema it can work with over no
+        schema at all, so the rejected document must not be returned regardless.
+        """
+        upstream_repository(payload=UNSUPPORTED_REMOTE_DOCUMENT)
+        latest_release(LATEST_SCHEMA_TAG)
+
+        schema = load_schema(use_remote=True, local_fallback=True)
+
+        assert schema != UNSUPPORTED_REMOTE_DOCUMENT
+        assert BUNDLED_SCHEMA_TAG == f"v{get_schema_version(schema)}"
+
+    def test_resolving_the_latest_release_reports_nothing_on_a_failing_request(
+        self, upstream_repository
+    ):
+        """Test that a failing request yields no tag rather than an error.
+
+        The resolution is an attempt to improve upon the bundled release rather than
+        a requirement; raising here would keep a node whose network is restricted
+        from loading any schema at all.
+        """
+        stub = upstream_repository(error=OSError("The repository is unreachable"))
+
+        assert schema_loader.resolve_latest_schema_tag() is None
+        assert len(stub.requested_urls) == 1
+
+    def test_resolving_the_latest_release_reports_nothing_without_a_tag(
+        self, upstream_repository
+    ):
+        """Test that a release that declares no tag yields no tag either.
+
+        A response of an unexpected shape must not be turned into a URL, as that
+        would request a release that cannot exist.
+        """
+        upstream_repository(payload={"name": "A release without a tag"})
+
+        assert schema_loader.resolve_latest_schema_tag() is None
+
+    def test_no_request_is_made_without_a_timeout(
+        self, upstream_repository, latest_release
+    ):
+        """Test that every request to the repository is bounded by a timeout.
+
+        A request without one can keep an algorithm waiting indefinitely, which on a
+        node means a task that never finishes and never fails either.
+        """
+        stub = upstream_repository(payload=REMOTE_SCHEMA)
+        latest_release(LATEST_SCHEMA_TAG)
+
+        load_schema(use_remote=True)
+
+        assert stub.timeouts and all(timeout for timeout in stub.timeouts)
 
 
 if __name__ == "__main__":

