@@ -130,6 +130,60 @@ NAUGHTY_WORD_LIST = [
 ]
 
 
+# Shapes that a variable and a variable property may take. A variable is either a class
+# code ("ncit:C28421"), the name of a schema variable ("age_at_initial_diagnosis") or an
+# IRI between angle brackets; a property may in addition be a property path. Any other
+# shape - and in particular one that holds whitespace, braces, quotation marks or a hash -
+# is refused, as it would allow the input to close the triple pattern that it is
+# substituted into and to append a clause of its own to the query.
+PERMITTED_IRI_PATTERN = r"<[^\s<>{}\"'`|\\^]+>"
+PERMITTED_VARIABLE_PATTERN = re.compile(
+    r"^(?:[A-Za-z_][\w.\-]*(?::[\w.\-]+)?|" + PERMITTED_IRI_PATTERN + r")$"
+)
+PERMITTED_PROPERTY_PATTERN = re.compile(
+    r"^(?:[A-Za-z_(][\w.\-:/|()^]*|" + PERMITTED_IRI_PATTERN + r")$"
+)
+
+
+def _verify_input_safety(variable: str, variable_property: str) -> None:
+    """
+    Verify that a variable and a property can be substituted into a query safely.
+
+    Both are substituted into the query template as they are, which means that an input
+    of an unexpected shape could extend the query with a clause of its own; a federated
+    query towards another endpoint, for instance. The shape of the input is therefore
+    verified before it is used, and any SPARQL keyword within it is refused as well.
+
+    Args:
+        variable (str): The variable (or class code) to verify.
+        variable_property (str): The property that identifies the variable.
+
+    Raises:
+        UserInputError: If either input does not hold the expected shape or holds a
+                        SPARQL keyword.
+    """
+    for description, value, pattern in (
+        ("variable", variable, PERMITTED_VARIABLE_PATTERN),
+        ("variable property", variable_property, PERMITTED_PROPERTY_PATTERN),
+    ):
+        if not isinstance(value, str) or not pattern.match(value):
+            raise UserInputError(
+                f"Potentially dangerous input detected in the {description}; only a "
+                f"class code, a variable name or an IRI between angle brackets is "
+                f"accepted."
+            )
+
+    # The keywords are sought as whole words, as they occur within perfectly ordinary
+    # names as well; "IN" within "initial", for instance
+    for candidate in (variable, variable.split(":")[0] + ":", variable_property):
+        for word in NAUGHTY_WORD_LIST:
+            if re.search(r"\b" + re.escape(word) + r"\b", candidate, re.IGNORECASE):
+                raise UserInputError(
+                    "Potentially dangerous input detected in variable, ontology part, "
+                    f"or variable property; '{word}' is a SPARQL keyword."
+                )
+
+
 def _natural_sort_key(identifier: object) -> Tuple[Union[str, int], ...]:
     """
     Compose a sort key that orders textual identifiers in their natural order.
@@ -313,15 +367,10 @@ def _process_variable_query(
     Returns:
         pd.DataFrame: The DataFrame containing the query results.
     """
-    # Check for naughty words in the input variables early
+    # Verify the input before it is substituted into the query template
+    _verify_input_safety(variable, variable_property)
+
     ontology_part = variable.split(":")[0] + ":"
-    if any(
-        word in (variable, ontology_part, variable_property)
-        for word in NAUGHTY_WORD_LIST
-    ):
-        raise UserInputError(
-            "Potentially dangerous input detected in variable, ontology part, or variable property."
-        )
 
     # Build query based on whether we're using schema or not
     if use_schema and schema:
@@ -403,17 +452,9 @@ def _process_multi_column_query(
 
     var1, var2 = variables
 
-    # Check for naughty words in both variables
+    # Verify both variables before either is substituted into the query template
     for variable in [var1, var2]:
-        ontology_part = variable.split(":")[0] + ":"
-        if any(
-            word in (variable, ontology_part, variable_property)
-            for word in NAUGHTY_WORD_LIST
-        ):
-            raise UserInputError(
-                "Potentially dangerous input detected in variable, ontology part, "
-                "or variable property."
-            )
+        _verify_input_safety(variable, variable_property)
 
     # Build query parameters for each variable
     query = query_template
