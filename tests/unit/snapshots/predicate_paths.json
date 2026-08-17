@@ -1,0 +1,1046 @@
+{
+  "schema_tag": "v2.0.1",
+  "schema_version": "2.0.1",
+  "variables": {
+    "administered_prom_language": {
+      "class": "ncit:C16779",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "(sio:SIO_000255/sio:SIO_000008|sio:SIO_000255/sio:SIO_000008/sio:SIO_000008|sio:SIO_000255/sio:SIO_SIO_000008/sio:SIO_000008)/(sio:SIO_000233|sio:SIO_000253)/sio:SIO_000233"
+    },
+    "age_at_initial_diagnosis": {
+      "class": "ncit:C156420",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008"
+    },
+    "annual_income": {
+      "class": "ncit:C154890",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008"
+    },
+    "bespoke_q2_cancer_spread": {
+      "class": "strongaya:bespoke_q2",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "bespoke_q3_prognosis_perception": {
+      "class": "strongaya:bespoke_q3",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "bespoke_q4_cancer_recurrence": {
+      "class": "strongaya:bespoke_q4",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "bespoke_q5_fertility_affected": {
+      "class": "strongaya:bespoke_q5",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "bespoke_q6_fertility_preservation_offered": {
+      "class": "strongaya:bespoke_q6",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "bespoke_q7_organ_problem": {
+      "class": "strongaya:bespoke_q7",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "bespoke_q83_mental_support_offered": {
+      "class": "strongaya:bespoke_q83",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "bespoke_q84_life_threatening_infection": {
+      "class": "strongaya:bespoke_q84",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "bespoke_q85_clinical_trial_offered": {
+      "class": "strongaya:bespoke_q85",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "bespoke_q86_clinical_trial_participated": {
+      "class": "ncit:C192341",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "bespoke_q87_fear_of_recurrence": {
+      "class": "strongaya:bespoke_q87",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "bespoke_q88_info_in_possession": {
+      "class": "strongaya:bespoke_q88",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "bespoke_q89_info_findability": {
+      "class": "strongaya:bespoke_q89",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "bespoke_q8_hormone_treatment": {
+      "class": "strongaya:bespoke_q8a",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "bespoke_q90_survivorship_support": {
+      "class": "strongaya:bespoke_q90",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "biological_sex": {
+      "class": "ncit:C28421",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008"
+    },
+    "cancer_progression_event_time": {
+      "class": "ncit:C93153",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008"
+    },
+    "cancer_progression_follow_ups": {
+      "class": "strongaya:n_follow_ups",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008"
+    },
+    "chemotherapy": {
+      "class": "ncit:C15632",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000235/sio:SIO_000008"
+    },
+    "clinical_m_stage": {
+      "class": "ncit:C25727",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000235/sio:SIO_000008"
+    },
+    "clinical_n_stage": {
+      "class": "ncit:C25580",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000235/sio:SIO_000008"
+    },
+    "clinical_t_stage": {
+      "class": "ncit:C25728",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000235/sio:SIO_000008"
+    },
+    "cognitive_decline": {
+      "class": "ncit:C162756",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008"
+    },
+    "comorb_aids": {
+      "class": "ncit:C106391",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000059"
+    },
+    "comorb_chf": {
+      "class": "ncit:C3080",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000059"
+    },
+    "comorb_ctd": {
+      "class": "ncit:C106390",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000059"
+    },
+    "comorb_cva_tia": {
+      "class": "ncit:C106378",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000059"
+    },
+    "comorb_dementia": {
+      "class": "ncit:C106389",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000059"
+    },
+    "comorb_dm": {
+      "class": "ncit:C2985",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000059"
+    },
+    "comorb_hemiplegia": {
+      "class": "ncit:C106379",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000059"
+    },
+    "comorb_kidney": {
+      "class": "ncit:C106383",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000059"
+    },
+    "comorb_leukemia": {
+      "class": "ncit:C3161",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000059"
+    },
+    "comorb_liver": {
+      "class": "ncit:C113609",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000059"
+    },
+    "comorb_lung": {
+      "class": "ncit:C106380",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000059"
+    },
+    "comorb_mi": {
+      "class": "ncit:C106375",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000059"
+    },
+    "comorb_pad": {
+      "class": "ncit:C106377",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000059"
+    },
+    "comorb_pud": {
+      "class": "ncit:C106386",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000059"
+    },
+    "comorb_solid_tumour": {
+      "class": "ncit:C9292",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000059"
+    },
+    "distant_metastases": {
+      "class": "ncit:C18206",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000235/sio:SIO_000008"
+    },
+    "educational_level": {
+      "class": "ncit:C17953",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008"
+    },
+    "eortc_qlq_aya_activity_limit_AYAAL": {
+      "class": "strongaya:eortc_qlq_aya_ayaal",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_aya_change_residence_AYACR": {
+      "class": "strongaya:eortc_qlq_aya_ayacr",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_aya_early_menopause_gain_AYAEM": {
+      "class": "strongaya:eortc_qlq_aya_ayaem",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_aya_looking_after_AYALO": {
+      "class": "strongaya:eortc_qlq_aya_ayalo",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_aya_positive_change_AYAPC": {
+      "class": "strongaya:eortc_qlq_aya_ayapc",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_aya_problems_edu_work_AYAEW": {
+      "class": "strongaya:eortc_qlq_aya_ayaew",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_aya_q1": {
+      "class": "strongaya:eortc_qlq_aya_q1",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_aya_q10": {
+      "class": "strongaya:eortc_qlq_aya_q10",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_aya_q11": {
+      "class": "strongaya:eortc_qlq_aya_q11",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_aya_q12": {
+      "class": "strongaya:eortc_qlq_aya_q12",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_aya_q13": {
+      "class": "strongaya:eortc_qlq_aya_q13",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_aya_q14": {
+      "class": "strongaya:eortc_qlq_aya_q14",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_aya_q15": {
+      "class": "strongaya:eortc_qlq_aya_q15",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_aya_q16": {
+      "class": "strongaya:eortc_qlq_aya_q16",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_aya_q17": {
+      "class": "strongaya:eortc_qlq_aya_q17",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_aya_q18": {
+      "class": "strongaya:eortc_qlq_aya_q18",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_aya_q19": {
+      "class": "strongaya:eortc_qlq_aya_q19",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_aya_q2": {
+      "class": "strongaya:eortc_qlq_aya_q2",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_aya_q20": {
+      "class": "strongaya:eortc_qlq_aya_q20",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_aya_q21": {
+      "class": "strongaya:eortc_qlq_aya_q21",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_aya_q22": {
+      "class": "strongaya:eortc_qlq_aya_q22",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_aya_q23": {
+      "class": "strongaya:eortc_qlq_aya_q23",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_aya_q24": {
+      "class": "strongaya:eortc_qlq_aya_q24",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_aya_q25": {
+      "class": "strongaya:eortc_qlq_aya_q25",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_aya_q26": {
+      "class": "strongaya:eortc_qlq_aya_q26",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_aya_q27": {
+      "class": "strongaya:eortc_qlq_aya_q27",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_aya_q28": {
+      "class": "strongaya:eortc_qlq_aya_q28",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_aya_q29": {
+      "class": "strongaya:eortc_qlq_aya_q29",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_aya_q3": {
+      "class": "strongaya:eortc_qlq_aya_q3",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_aya_q30": {
+      "class": "strongaya:eortc_qlq_aya_q30",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_aya_q4": {
+      "class": "strongaya:eortc_qlq_aya_q4",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_aya_q5": {
+      "class": "strongaya:eortc_qlq_aya_q5",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_aya_q6": {
+      "class": "strongaya:eortc_qlq_aya_q6",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_aya_q7": {
+      "class": "strongaya:eortc_qlq_aya_q7",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_aya_q8": {
+      "class": "strongaya:eortc_qlq_aya_q8",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_aya_q9": {
+      "class": "strongaya:eortc_qlq_aya_q9",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_aya_relationships_AYARE": {
+      "class": "strongaya:eortc_qlq_aya_ayare",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_aya_restricted_food_drink_AYARFD": {
+      "class": "strongaya:eortc_qlq_aya_ayarfd",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_aya_romantic_life_AYARO": {
+      "class": "strongaya:eortc_qlq_aya_ayaro",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_aya_self_esteem_AYASE": {
+      "class": "strongaya:eortc_qlq_aya_ayase",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_aya_sex_life_AYASL": {
+      "class": "strongaya:eortc_qlq_aya_ayasl",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_aya_weight_gain_AYAWG": {
+      "class": "strongaya:eortc_qlq_aya_ayawg",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_aya_weight_loss_AYAWL": {
+      "class": "strongaya:eortc_qlq_aya_ayawl",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_aya_worry_AYAWO": {
+      "class": "strongaya:eortc_qlq_aya_ayawo",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_appetite_loss_AP": {
+      "class": "ncit:C181153",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_cognitive_functioning_CF": {
+      "class": "ncit:C181146",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_constipation_CO": {
+      "class": "ncit:C181154",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_diarrhoea_DI": {
+      "class": "ncit:C181155",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_dyspnoea_DY": {
+      "class": "ncit:C181151",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_emotional_functioning_EF": {
+      "class": "ncit:C181145",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_fatigue_FA": {
+      "class": "ncit:C181148",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_financial_difficulties_FI": {
+      "class": "ncit:C181156",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_insomnia_SL": {
+      "class": "ncit:C181152",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_nausea_vomiting_NV": {
+      "class": "ncit:C181149",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_overall_qol_QL2": {
+      "class": "ncit:C181142",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_pain_PA": {
+      "class": "ncit:C181150",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_physical_functioning_PF2": {
+      "class": "ncit:C181143",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_q1": {
+      "class": "ncit:C104279",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_q10": {
+      "class": "ncit:C104293",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_q11": {
+      "class": "ncit:C104294",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_q12": {
+      "class": "ncit:C104295",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_q13": {
+      "class": "ncit:C104296",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_q14": {
+      "class": "ncit:C91124",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_q15": {
+      "class": "ncit:C104298",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_q16": {
+      "class": "ncit:C104299",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_q17": {
+      "class": "ncit:C104300",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_q18": {
+      "class": "ncit:C104301",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_q19": {
+      "class": "ncit:C99785",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_q2": {
+      "class": "ncit:C104281",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_q20": {
+      "class": "ncit:C104307",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_q21": {
+      "class": "strongaya:eortc_qlq_c30_q21",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_q22": {
+      "class": "ncit:C104304",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_q23": {
+      "class": "ncit:C104308",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_q24": {
+      "class": "ncit:C104309",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_q25": {
+      "class": "ncit:C99795",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_q26": {
+      "class": "ncit:C104310",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_q27": {
+      "class": "ncit:C104311",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_q28": {
+      "class": "ncit:C104312",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_q29": {
+      "class": "ncit:C104313",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_q3": {
+      "class": "ncit:C104282",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_q30": {
+      "class": "ncit:C104314",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_q4": {
+      "class": "ncit:C104283",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_q5": {
+      "class": "ncit:C104284",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_q6": {
+      "class": "ncit:C104285",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_q7": {
+      "class": "ncit:C104286",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_q8": {
+      "class": "ncit:C99773",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_q9": {
+      "class": "ncit:C91126",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_role_functioning_RF2": {
+      "class": "ncit:C181144",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "eortc_qlq_c30_social_functioning_SF": {
+      "class": "ncit:C181147",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "ethnicity": {
+      "class": "ncit:C16564",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008"
+    },
+    "gender": {
+      "class": "ncit:C158277",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008"
+    },
+    "hads_anxiety": {
+      "class": "ncit:C118111",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "hads_depression": {
+      "class": "ncit:C118112",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "hads_q1": {
+      "class": "ncit:C104302",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "hads_q10": {
+      "class": "ncit:C114670",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "hads_q11": {
+      "class": "ncit:C114671",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "hads_q12": {
+      "class": "ncit:C114674",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "hads_q13": {
+      "class": "ncit:C114676",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "hads_q14": {
+      "class": "ncit:C114677",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "hads_q2": {
+      "class": "ncit:C114635",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "hads_q3": {
+      "class": "ncit:C114636",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "hads_q4": {
+      "class": "ncit:C114637",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "hads_q5": {
+      "class": "ncit:C114638",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "hads_q6": {
+      "class": "ncit:C114639",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "hads_q7": {
+      "class": "ncit:C114640",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "hads_q8": {
+      "class": "ncit:C114668",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "hads_q9": {
+      "class": "ncit:C114669",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008/sio:SIO_000008"
+    },
+    "hormone_therapy": {
+      "class": "ncit:C15445",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000235/sio:SIO_000008"
+    },
+    "identifier": {
+      "class": "ncit:C25364",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000673"
+    },
+    "identify_disabled": {
+      "class": "strongaya:identify_disabled",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008"
+    },
+    "immunotherapy": {
+      "class": "ncit:C15262",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000235/sio:SIO_000008"
+    },
+    "infection_admitted": {
+      "class": "strongaya:infection_admitted",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008"
+    },
+    "infection_admitted_outcome": {
+      "class": "strongaya:infection_admitted_outcome",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008"
+    },
+    "infection_admitted_stay": {
+      "class": "strongaya:infection_admitted_stay",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008"
+    },
+    "laterality": {
+      "class": "ncit:C25185",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000235/sio:SIO_000059"
+    },
+    "lymph_nodes_examined": {
+      "class": "strongaya:lymph_nodes_examined",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000235/sio:SIO_000008"
+    },
+    "mental_health_referral": {
+      "class": "strongaya:mental_health_referral",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008"
+    },
+    "non_tumour_directed_treatment": {
+      "class": "strongaya:non_tumour_directed_treatment",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000235/sio:SIO_000008"
+    },
+    "occupational": {
+      "class": "ncit:C25193",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008"
+    },
+    "organ_function_amenorrhea": {
+      "class": "ncit:C143240",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008"
+    },
+    "organ_function_anorexia": {
+      "class": "ncit:C57118",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008"
+    },
+    "organ_function_azoospermia": {
+      "class": "ncit:C143312",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008"
+    },
+    "organ_function_cardiac": {
+      "class": "ncit:C143165",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008"
+    },
+    "organ_function_cholestorol_high": {
+      "class": "ncit:C143368",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008"
+    },
+    "organ_function_chronic_kidney": {
+      "class": "ncit:C143369",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008"
+    },
+    "organ_function_cognitive": {
+      "class": "ncit:C146746",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008"
+    },
+    "organ_function_creatinine": {
+      "class": "ncit:C143391",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008"
+    },
+    "organ_function_diarrhoea": {
+      "class": "ncit:C57788",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008"
+    },
+    "organ_function_dyspnea": {
+      "class": "ncit:C58185",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008"
+    },
+    "organ_function_ejection_fraction": {
+      "class": "ncit:C143436",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008"
+    },
+    "organ_function_hearing": {
+      "class": "ncit:C143528",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008"
+    },
+    "organ_function_hepatic": {
+      "class": "ncit:C143539",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008"
+    },
+    "organ_function_hepatobiliary": {
+      "class": "ncit:C143544",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008"
+    },
+    "organ_function_hypertension": {
+      "class": "ncit:C55060",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008"
+    },
+    "organ_function_lvsd": {
+      "class": "ncit:C146719",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008"
+    },
+    "organ_function_lymphocyte": {
+      "class": "ncit:C143662",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008"
+    },
+    "organ_function_neuropathy": {
+      "class": "ncit:C143752",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008"
+    },
+    "organ_function_obesity": {
+      "class": "ncit:C55334",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008"
+    },
+    "organ_function_other": {
+      "class": "ncit:C36295",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008"
+    },
+    "organ_function_platelet": {
+      "class": "ncit:C143764",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008"
+    },
+    "organ_function_proteinuria": {
+      "class": "ncit:C146758",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008"
+    },
+    "organ_function_thromboembolic": {
+      "class": "ncit:C143873",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008"
+    },
+    "overall_stage": {
+      "class": "strongaya:overall_stage",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000059"
+    },
+    "pathological_m_stage": {
+      "class": "strongaya:path_m_stage",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000235/sio:SIO_000008"
+    },
+    "pathological_n_stage": {
+      "class": "strongaya:path_n_stage",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000235/sio:SIO_000008"
+    },
+    "pathological_t_stage": {
+      "class": "strongaya:path_t_stage",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000235/sio:SIO_000008"
+    },
+    "radiotherapy": {
+      "class": "ncit:C15313",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000235/sio:SIO_000008"
+    },
+    "registered_disabled": {
+      "class": "sct:161048004",
+      "ontology_prefix": "sct:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008"
+    },
+    "romantic_partnership_status": {
+      "class": "gsso:004690",
+      "ontology_prefix": "gsso:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008"
+    },
+    "stem_cell_therapy": {
+      "class": "ncit:C165194",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000235/sio:SIO_000008"
+    },
+    "surgery": {
+      "class": "ncit:C15329",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000235/sio:SIO_000008"
+    },
+    "survival_cause_of_event": {
+      "class": "ncit:C81239",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008"
+    },
+    "survival_event_time": {
+      "class": "ncit:C125201",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008"
+    },
+    "survival_status": {
+      "class": "ncit:C25717",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008"
+    },
+    "targeted_therapy": {
+      "class": "ncit:C93352",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000235/sio:SIO_000008"
+    },
+    "time_ehrprom_recording": {
+      "class": "strongaya:ehrtime",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "(sio:SIO_000255/sio:SIO_000008|sio:SIO_000255/sio:SIO_000235/sio:SIO_000008)/sio:SIO_000253/sio:SIO_000233"
+    },
+    "time_hcprom_recording": {
+      "class": "strongaya:hcpromtime",
+      "ontology_prefix": "strongaya:",
+      "predicate_path": "(sio:SIO_000255/sio:SIO_000008|sio:SIO_000255/sio:SIO_000008/sio:SIO_000059|sio:SIO_000255/sio:SIO_000059|sio:SIO_000255/sio:SIO_000235/sio:SIO_000008|sio:SIO_000255/sio:SIO_000235/sio:SIO_000059)/sio:SIO_000253/sio:SIO_000233"
+    },
+    "time_prom_recording": {
+      "class": "ncit:C192402",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "(sio:SIO_000255/sio:SIO_000008|sio:SIO_000255/sio:SIO_000008/sio:SIO_000008|sio:SIO_000255/sio:SIO_SIO_000008/sio:SIO_000008)/sio:SIO_000253/sio:SIO_000233"
+    },
+    "treatment_intent": {
+      "class": "ncit:C210652",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000235/sio:SIO_000008"
+    },
+    "tumour_morphology_icd_10": {
+      "class": "ncit:C4741",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000235/sio:SIO_000059"
+    },
+    "tumour_morphology_icd_o": {
+      "class": "ncit:C176985",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000235/sio:SIO_000059"
+    },
+    "tumour_size": {
+      "class": "ncit:C120284",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000235/sio:SIO_000008"
+    },
+    "tumour_topography_or_location_icd_10": {
+      "class": "ncit:C3263",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000235/sio:SIO_000059"
+    },
+    "tumour_topography_or_location_icd_o": {
+      "class": "ncit:C160903",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000235/sio:SIO_000059"
+    },
+    "year_of_initial_diagnosis": {
+      "class": "ncit:C164339",
+      "ontology_prefix": "ncit:",
+      "predicate_path": "sio:SIO_000255/sio:SIO_000008"
+    }
+  }
+}

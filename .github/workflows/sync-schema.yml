@@ -77,6 +77,14 @@ jobs:
             The release tag that is recorded in `schema_loader.py` is updated alongside the
             schema itself, so that a node can log which schema version it has run against.
 
+            The predicate path of every variable is guarded by a snapshot, so the test suite
+            reports which paths this release changes. Review that report and, when the change
+            is intended, regenerate the snapshot with:
+
+            ```bash
+            UPDATE_PREDICATE_PATH_SNAPSHOT=1 pytest tests/unit/test_schema_contract.py
+            ```
+
             Please review the changes before merging.
           branch: sync-schema-${{ github.run_number }}
           delete-branch: true
