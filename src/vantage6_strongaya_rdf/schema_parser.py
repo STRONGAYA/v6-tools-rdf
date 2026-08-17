@@ -7,8 +7,14 @@ dynamic SPARQL predicate paths based on schemaReconstruction.
 ------------------------------------------------------------------------------
 """
 
-from typing import Dict, List
+from typing import Dict, FrozenSet, List, Optional, Set
 from vantage6_strongaya_general.miscellaneous import safe_log
+
+# JSON-LD node type that represents a class in a schemaReconstruction
+CLASS_NODE_TYPE = "schema:ClassNode"
+
+# Placement of a schemaReconstruction node relative to the variable's own node
+PLACEMENT_AFTER = "after"
 
 
 def get_schema_prefixes(schema: dict) -> Dict[str, str]:
@@ -54,49 +60,198 @@ def get_schema_prefixes(schema: dict) -> Dict[str, str]:
     return prefixes
 
 
-def resolve_intermediate_class_path(target_class: str, schema: dict) -> List[str]:
+def _get_variables(schema: dict) -> dict:
     """
-    Find the predicate path to reach an intermediate class (like PROM, EHR, HCPROM)
-    by looking at how other variables connect to it via "after" placement.
+    Retrieve the variable definitions of the schema.
+
+    Args:
+        schema: The full schema dictionary
+
+    Returns:
+        Dictionary of variable definitions, empty when the schema holds none
+    """
+    return schema.get("schema", {}).get("variables", {}) or {}
+
+
+def _get_reconstruction(variable_definition: dict) -> List[dict]:
+    """
+    Retrieve the schemaReconstruction of a single variable definition.
+
+    Args:
+        variable_definition: Definition of a single schema variable
+
+    Returns:
+        List of schemaReconstruction nodes, empty when the variable holds none
+    """
+    return variable_definition.get("schemaReconstruction", []) or []
+
+
+def get_intermediate_classes(schema: dict) -> Set[str]:
+    """
+    Determine the intermediate (container) classes of the schema.
+
+    Intermediate classes - such as PROM, EHR and HCPROM - are not reached from the
+    patient directly; they are attached to the node of another variable and are
+    therefore declared with an "after" placement by the variables that point to them.
+
+    Args:
+        schema: The full schema dictionary
+
+    Returns:
+        Set of class codes that are used as intermediate class (e.g. {"ncit:C177377"})
+    """
+    return {
+        item.get("class")
+        for variable_definition in _get_variables(schema).values()
+        for item in _get_reconstruction(variable_definition)
+        if item.get("placement") == PLACEMENT_AFTER and item.get("class")
+    }
+
+
+def _as_alternation(alternatives: List[str]) -> str:
+    """
+    Combine path alternatives into a single SPARQL property path segment.
+
+    Args:
+        alternatives: Alternative (sequence) paths, e.g. ["sio:SIO_000255/sio:SIO_000008"]
+
+    Returns:
+        The single alternative itself, or a grouped alternation such as "(a/b|a/b/b)"
+    """
+    if len(alternatives) == 1:
+        return alternatives[0]
+    return "(" + "|".join(alternatives) + ")"
+
+
+def _build_class_node_segments(
+    variable_definition: dict, schema: dict, resolving: FrozenSet[str]
+) -> List[str]:
+    """
+    Build the ordered path segments that precede a variable's own predicate.
+
+    Args:
+        variable_definition: Definition of a single schema variable
+        schema: The full schema dictionary
+        resolving: Intermediate classes that are currently being resolved (loop guard)
+
+    Returns:
+        Ordered list of SPARQL property path segments
+    """
+    intermediate_classes = get_intermediate_classes(schema)
+    segments: List[str] = []
+
+    for item in _get_reconstruction(variable_definition):
+        # Only class nodes that precede the variable's own node contribute to the path;
+        # "after" nodes are reached from the variable's node and unit nodes hold no path
+        if (
+            item.get("@type") != CLASS_NODE_TYPE
+            or item.get("placement") == PLACEMENT_AFTER
+        ):
+            continue
+
+        item_class = item.get("class")
+        item_predicate = item.get("predicate")
+
+        if item_class in intermediate_classes:
+            intermediate_segments = resolve_intermediate_class_path(
+                item_class, schema, hop_predicate=item_predicate, resolving=resolving
+            )
+            if intermediate_segments:
+                segments.extend(intermediate_segments)
+                continue
+            safe_log(
+                "warning",
+                f"Could not resolve the path to intermediate class '{item_class}'; "
+                f"using its own predicate instead",
+            )
+
+        if item_predicate:
+            segments.append(item_predicate)
+
+    return segments
+
+
+def resolve_intermediate_class_path(
+    target_class: str,
+    schema: dict,
+    hop_predicate: Optional[str] = None,
+    resolving: FrozenSet[str] = frozenset(),
+) -> List[str]:
+    """
+    Resolve the predicate path that reaches an intermediate class (like PROM, EHR, HCPROM).
+
+    Intermediate classes are attached to the node of another variable, which is why they
+    are declared with an "after" placement by the variables that point to them. The path
+    to such a class therefore consists of two parts:
+    1. The path to the node of a variable that points to the intermediate class; and
+    2. The hop from that variable's node to the intermediate class itself.
+
+    Variables may reach the intermediate class through different routes, in which case
+    all distinct routes are combined into a single grouped alternation. The resolution is
+    recursive, so intermediate classes that are themselves nested are resolved as well.
 
     Args:
         target_class: The class to resolve (e.g., "ncit:C177377" for PROM)
         schema: The full schema dictionary
+        hop_predicate: The predicate that the requesting variable declares for the hop
+                       into the intermediate class; combined with the predicates that
+                       the schema declares for that hop when the two differ
+        resolving: Intermediate classes that are currently being resolved (loop guard)
 
     Returns:
-        List of predicates that form the path to the intermediate class
+        Ordered list of SPARQL property path segments that reach the intermediate class,
+        or an empty list when the class is not used as an intermediate class
     """
-    variables = schema.get("schema", {}).get("variables", {})
+    if target_class in resolving:
+        safe_log(
+            "warning",
+            f"Circular intermediate class definition detected for '{target_class}'",
+        )
+        return []
 
-    # Search for a variable that has this class as an "after" placement
-    for var_name, var_def in variables.items():
-        schema_rec = var_def.get("schemaReconstruction", [])
+    resolving = resolving | {target_class}
 
-        for item in schema_rec:
-            # Check if this is an "after" placement pointing to our target class
-            if item.get("placement") == "after" and item.get("class") == target_class:
-                # Found a variable that connects to this class
-                # Build the path for that variable and return it
-                predicates = []
+    routes: Set[str] = set()
+    hop_predicates: Set[str] = set()
 
-                # Collect "before" predicates (or default if no placement)
-                for rec_item in schema_rec:
-                    placement = rec_item.get("placement")
-                    # Only include items that come "before" (or have no placement, which defaults to "before")
-                    # Skip "after" items and non-ClassNode items (like UnitNode)
-                    if rec_item.get("@type") == "schema:ClassNode":
-                        if placement != "after":
-                            predicates.append(rec_item.get("predicate"))
+    for variable_definition in _get_variables(schema).values():
+        for item in _get_reconstruction(variable_definition):
+            if (
+                item.get("placement") != PLACEMENT_AFTER
+                or item.get("class") != target_class
+            ):
+                continue
 
-                # Add the main predicate of the variable
-                main_predicate = var_def.get("predicate")
-                if main_predicate:
-                    predicates.append(main_predicate)
+            # Path to the node of the variable that points to the intermediate class
+            route = _build_class_node_segments(variable_definition, schema, resolving)
+            own_predicate = variable_definition.get("predicate")
+            if own_predicate:
+                route = route + [own_predicate]
+            if route:
+                routes.add("/".join(route))
 
-                return predicates
+            # Hop from that variable's node to the intermediate class
+            if item.get("predicate"):
+                hop_predicates.add(item["predicate"])
 
-    # If not found, return empty list
-    return []
+    if not routes:
+        return []
+
+    if hop_predicate and hop_predicate not in hop_predicates:
+        if hop_predicates:
+            safe_log(
+                "warning",
+                f"Predicate '{hop_predicate}' declared for intermediate class "
+                f"'{target_class}' differs from the schema's "
+                f"{sorted(hop_predicates)}; both are considered",
+            )
+        hop_predicates.add(hop_predicate)
+
+    segments = [_as_alternation(sorted(routes))]
+    if hop_predicates:
+        segments.append(_as_alternation(sorted(hop_predicates)))
+
+    return segments
 
 
 def build_predicate_path(variable_name: str, schema: dict) -> str:
@@ -104,71 +259,41 @@ def build_predicate_path(variable_name: str, schema: dict) -> str:
     Build the SPARQL predicate path from schema definition.
 
     Rules:
-    1. Collect "before" predicates from schemaReconstruction
-    2. Add the main predicate
-    3. If a "before" class is an intermediate class (like PROM, EHR),
-       recursively resolve its full path from other variables
+    1. Collect the predicates of the class nodes that precede the variable's own node
+    2. Resolve intermediate classes (like PROM, EHR and HCPROM) to their full path
+    3. Append the variable's own predicate
+
+    The predicates are combined into an ordered sequence path, which follows the exact
+    structure that the schema describes rather than any combination of its predicates.
 
     Args:
         variable_name: Name of the variable to build path for
         schema: The full schema dictionary
 
     Returns:
-        SPARQL property path string like "(sio:SIO_000255|sio:SIO_000008)*"
+        SPARQL property path string like "sio:SIO_000255/sio:SIO_000008"
     """
-    variables = schema.get("schema", {}).get("variables", {})
+    variables = _get_variables(schema)
 
     if variable_name not in variables:
         safe_log("warning", f"Variable '{variable_name}' not found in schema")
         return ""
 
-    var_def = variables[variable_name]
-    schema_rec = var_def.get("schemaReconstruction", [])
+    variable_definition = variables[variable_name]
 
-    predicates = []
-
-    # Collect "before" predicates (and resolve intermediate classes)
-    for item in schema_rec:
-        # Only process ClassNode items with "before" placement (or no placement, which defaults to "before")
-        if item.get("@type") == "schema:ClassNode":
-            placement = item.get("placement")
-
-            if placement != "after":  # "before" or default (None)
-                item_class = item.get("class")
-                item_predicate = item.get("predicate")
-
-                # Check if this class is an intermediate class that needs resolution
-                # Intermediate classes are those that other variables connect to via "after"
-                intermediate_path = resolve_intermediate_class_path(item_class, schema)
-
-                if intermediate_path:
-                    # This is an intermediate class, use its resolved path
-                    predicates.extend(intermediate_path)
-                else:
-                    # Regular "before" predicate
-                    if item_predicate:
-                        predicates.append(item_predicate)
+    segments = _build_class_node_segments(variable_definition, schema, frozenset())
 
     # Add the main predicate of the variable itself
-    main_predicate = var_def.get("predicate")
+    main_predicate = variable_definition.get("predicate")
     if main_predicate:
-        predicates.append(main_predicate)
+        segments.append(main_predicate)
 
-    # Remove duplicates while preserving order
-    seen = set()
-    unique_predicates = []
-    for pred in predicates:
-        if pred not in seen:
-            seen.add(pred)
-            unique_predicates.append(pred)
-
-    # Build the SPARQL property path
-    if not unique_predicates:
+    if not segments:
         safe_log("warning", f"No predicates found for variable '{variable_name}'")
         return ""
 
-    # Format: (predicate1|predicate2)*
-    path = "(" + "|".join(unique_predicates) + ")*"
+    # Format: predicate1/predicate2
+    path = "/".join(segments)
 
     safe_log("info", f"Built predicate path for '{variable_name}': {path}")
     return path
@@ -189,7 +314,7 @@ def _resolve_variable_name(variable_name: str, schema: dict) -> str:
     Returns:
         The resolved schema variable name, or empty string if not found
     """
-    variables = schema.get("schema", {}).get("variables", {})
+    variables = _get_variables(schema)
 
     # Direct name lookup
     if variable_name in variables:
@@ -220,7 +345,7 @@ def get_variable_query_params(variable_name: str, schema: dict) -> dict:
     Returns:
         Dictionary with:
         {
-            "predicate_path": "(sio:SIO_000255|sio:SIO_000008)*",
+            "predicate_path": "sio:SIO_000255/sio:SIO_000008",
             "main_class": "ncit:C156420",
             "ontology_prefix": "ncit:"
         }
@@ -234,7 +359,7 @@ def get_variable_query_params(variable_name: str, schema: dict) -> dict:
         )
         return {}
 
-    variables = schema.get("schema", {}).get("variables", {})
+    variables = _get_variables(schema)
     var_def = variables[resolved_name]
 
     # Get main class
