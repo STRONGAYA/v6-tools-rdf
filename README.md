@@ -243,12 +243,45 @@ when their records describe the same patient:
 Note that a multi-column query only yields the patients that hold both variables, whereas a
 single-column query yields the union of the patients of each variable.
 
+A record that holds several values for the same variable - repeated measures, for instance -
+is represented by one sampled value per patient, as both queries group their results by
+patient.
+
+### Patient Identifiers
+
+The patient identifier (`patient_id`) is always text, whichever values a dataset holds; it is
+never converted to a number. An identifier is a label rather than a quantity, it may hold
+characters in one dataset and digits only in another, and converting it would make its type
+depend on the values of a single variable - after which the variables of separate tables
+could no longer be merged. Numeric identifiers are nevertheless ordered by their value rather
+than as text, so `"2"` precedes `"10"`.
+
 ### Missing Patient Identifiers
 
 A record whose identifier cannot be retrieved is identified by its own URI rather than being
 dropped from the results, so that it is still observed and counted amongst the missing data.
 The number of records that fell back to their URI is reported as a warning; such records
 cannot be linked to the records of another table.
+
+### Missing Values
+
+An absence of data is an observation rather than an error: a patient that holds no value for
+a requested variable remains part of the results with an empty cell, and a variable that no
+record holds at all yields an empty column rather than no column.
+
+Every notation of missing data is counted as such in the missing-value statistics that the
+results carry: the Triplifier's `"NULL"` cells, a dataset's own notation (see
+`MISSING_DATA_NOTATION`) and the values that a patient simply does not hold.
+
+### Accepted Input
+
+A variable and a variable property are substituted into the query template as they are, so
+both are verified before they are used. Accepted are a class code (`ncit:C28421`), the name
+of a schema variable (`age_at_initial_diagnosis`) and an IRI between angle brackets; a
+property may in addition be a property path. Anything else - whitespace, braces, quotation
+marks, a hash - as well as any SPARQL keyword is refused with a `UserInputError` before a
+query is composed, since such input could otherwise extend the query with a clause of its
+own; a federated query towards another endpoint, for instance.
 
 ### Environment Variables
 
@@ -283,6 +316,9 @@ tests/
 │   ├── test_schema_functions.py          # Tests for schema loader and parser
 │   ├── test_query_templates.py           # Tests for the construction of the queries
 │   ├── test_query_execution.py           # Tests that execute the queries on a synthetic graph
+│   ├── test_fallback_query_execution.py  # Tests that execute the queries without the schema
+│   ├── test_schema_contract.py           # Tests every variable of the schema and its snapshot
+│   └── snapshots/                        # Golden snapshot of every variable's predicate path
 ├── integration/                          # Integration tests
 │   └── test_vantage6_integration.py      # Data stratification workflows
 │   └── test_rdf_algorithm_integration.py # Vantage6 algorithm integration tests
@@ -331,6 +367,31 @@ pytest tests/unit/test_library_functions.py
 
 # Run with verbose output
 pytest -v
+```
+
+### Guarding Against Schema Drift
+
+The bundled schema is synchronised with the semantic map automatically, and it describes far
+more variables than any test enumerates. Two mechanisms keep an update from silently changing
+what is queried:
+
+- `tests/unit/test_schema_contract.py` verifies every variable of the schema: it yields a
+  predicate path, that path holds no transitive or optional operator, every prefix that it
+  uses is declared, and the query that it produces parses as SPARQL;
+- `tests/unit/snapshots/predicate_paths.json` records the predicate path, class and ontology
+  prefix of every variable, so that a schema update yields a reviewable diff in the
+  synchronisation pull request. Regenerate it deliberately with:
+
+```bash
+UPDATE_PREDICATE_PATH_SNAPSHOT=1 pytest tests/unit/test_schema_contract.py
+```
+
+The contract can also be verified against the latest release of the semantic map itself, which
+reports an upstream change before a node encounters it. That test requires network access and
+is therefore not part of the default run:
+
+```bash
+RUN_NETWORK_TESTS=1 pytest -m network
 ```
 
 ### Test Categories
