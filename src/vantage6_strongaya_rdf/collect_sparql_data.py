@@ -140,17 +140,13 @@ def _load_query_template(query_name: str) -> str:
         str: The SPARQL query template.
     """
     try:
-        # Use compatible importlib.resources syntax for Python 3.8
-        from importlib.resources import files, as_file
-        
-        # Get the package resource
-        package = files("vantage6_strongaya_rdf")
-        template_path = package.joinpath("query_templates").joinpath(f"{query_name}.rq")
-        
-        # Read the file content
-        with as_file(template_path) as path:
-            with open(path, "r") as file:
-                return file.read()
+        with (
+            resources.files("vantage6_strongaya_rdf")
+            .joinpath("query_templates")
+            .joinpath(f"{query_name}.rq")
+            .open("r") as file
+        ):
+            return file.read()
     except Exception as e:
         safe_log("error", f"Error reading SPARQL query file: {e}.")
         return ""
@@ -192,9 +188,7 @@ def _build_prefix_declarations(schema: Optional[dict] = None) -> str:
     )
 
 
-def _prepare_query_template(
-    query_template: str, schema: Optional[dict] = None
-) -> str:
+def _prepare_query_template(query_template: str, schema: Optional[dict] = None) -> str:
     """
     Complete the parts of a query template that do not depend on the queried variables.
 
@@ -251,7 +245,9 @@ def _assign_patient_id(result_df: pd.DataFrame, variable: str) -> pd.DataFrame:
 
     identifiers = result_df["patientID"].astype(str)
     for record_column in record_columns:
-        fallback_count = int((identifiers == result_df[record_column].astype(str)).sum())
+        fallback_count = int(
+            (identifiers == result_df[record_column].astype(str)).sum()
+        )
         if fallback_count:
             safe_log(
                 "warn",
@@ -328,7 +324,6 @@ def _process_variable_query(
             query_template.replace("PLACEHOLDER_CLASS", main_class)
             .replace("PLACEHOLDER_ONTOLOGY", ontology_prefix)
             .replace("PLACEHOLDER_PREDICATE_PATH", predicate_path)
-            .replace("PLACEHOLDER_PREDICATE", predicate_path)  # Backward compatibility
         )
     else:
         # Use simple placeholder replacement (backward compatible)
@@ -336,7 +331,6 @@ def _process_variable_query(
             query_template.replace("PLACEHOLDER_CLASS", variable)
             .replace("PLACEHOLDER_ONTOLOGY", ontology_part)
             .replace("PLACEHOLDER_PREDICATE_PATH", variable_property)
-            .replace("PLACEHOLDER_PREDICATE", variable_property)
         )
 
     safe_log("info", f"Posting SPARQL query for {variable}.")
@@ -538,7 +532,7 @@ def collect_sparql_data(
             )
         except Exception as e:
             safe_log("error", f"Failed to load schema: {e}")
-            raise AlgorithmError("error", f"Failed to load schema: {e}")
+            raise AlgorithmError(f"Failed to load schema: {e}")
 
     if query_type == "single_column":
         query_template = _prepare_query_template(
@@ -568,7 +562,7 @@ def collect_sparql_data(
                             how="outer",
                         )
             except Exception as e:
-                raise AlgorithmError("error", f"Error processing {variable}: {e}")
+                raise AlgorithmError(f"Error processing {variable}: {e}")
 
     elif query_type == "multi_column":
         query_template = _prepare_query_template(
@@ -585,10 +579,7 @@ def collect_sparql_data(
                 use_schema,
             )
         except Exception as e:
-            raise AlgorithmError(
-                "error",
-                f"Error processing multi-column query: {e}",
-            )
+            raise AlgorithmError(f"Error processing multi-column query: {e}")
 
     else:
         raise UserInputError(f"Unknown query type: {query_type}.")

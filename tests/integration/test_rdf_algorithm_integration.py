@@ -5,7 +5,6 @@ Comprehensive Vantage6 integration testing.
 import pytest
 import json
 import pandas as pd
-import numpy as np
 
 from json import JSONDecodeError
 from io import StringIO
