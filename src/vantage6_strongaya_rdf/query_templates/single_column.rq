@@ -1,12 +1,4 @@
-PREFIX dbo: <http://um-cds/ontologies/databaseontology/>
-PREFIX roo: <http://www.cancerdata.org/roo/>
-PREFIX ncit: <http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#>
-PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-PREFIX owl: <http://www.w3.org/2002/07/owl#>
-PREFIX sio: <http://semanticscience.org/resource/>
-PREFIX sct: <http://snomed.info/id/>
-PREFIX strongaya: <https://strongaya.eu/>
-PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PLACEHOLDER_PREFIXES
 
 SELECT DISTINCT 
 	?patient
@@ -16,8 +8,8 @@ SELECT DISTINCT
 
 WHERE {      
     # ---------- Fetch patient ID from Table ----------
-    ?patient sio:SIO_000673 ?patientidNode.
-    ?patientidNode rdf:type ncit:C25364 ;
+    ?patient PLACEHOLDER_ID_PREDICATE ?patientidNode.
+    ?patientidNode rdf:type PLACEHOLDER_ID_CLASS ;
     				dbo:has_cell/dbo:has_value ?patientID .
     
     # ---------- Fetch patient attribute from Table ----------   

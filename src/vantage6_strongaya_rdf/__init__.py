@@ -11,6 +11,7 @@ from .schema_loader import (
 )
 from .schema_parser import (
     build_predicate_path,
+    get_identifier_query_params,
     get_intermediate_classes,
     get_schema_prefixes,
     get_variable_query_params,
@@ -24,6 +25,7 @@ __all__ = [
     "resolve_latest_schema_tag",
     "validate_schema",
     "build_predicate_path",
+    "get_identifier_query_params",
     "get_intermediate_classes",
     "get_schema_prefixes",
     "get_variable_query_params",

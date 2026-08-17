@@ -16,6 +16,14 @@ CLASS_NODE_TYPE = "schema:ClassNode"
 # Placement of a schemaReconstruction node relative to the variable's own node
 PLACEMENT_AFTER = "after"
 
+# Variable that describes the patient's identifier, and its JSON-LD type
+IDENTIFIER_VARIABLE_NAME = "identifier"
+IDENTIFIER_VARIABLE_TYPE = "schema:IdentifierVariable"
+
+# Identifier predicate and class that are used when the schema describes neither
+DEFAULT_IDENTIFIER_PREDICATE = "sio:SIO_000673"
+DEFAULT_IDENTIFIER_CLASS = "ncit:C25364"
+
 
 def get_schema_prefixes(schema: dict) -> Dict[str, str]:
     """
@@ -330,6 +338,64 @@ def _resolve_variable_name(variable_name: str, schema: dict) -> str:
             return var_name
 
     return ""
+
+
+def get_identifier_query_params(schema: dict) -> dict:
+    """
+    Get the query parameters of the patient's identifier.
+
+    The schema describes the identifier just like any other variable, which means that
+    the predicate and class that a query needs to resolve a patient's identifier can be
+    derived from it rather than being hardcoded in the query templates. The defaults are
+    only used when the schema describes no identifier at all.
+
+    Args:
+        schema: The full schema dictionary
+
+    Returns:
+        Dictionary with:
+        {
+            "predicate": "sio:SIO_000673",
+            "class": "ncit:C25364"
+        }
+    """
+    variables = _get_variables(schema)
+
+    identifier_name = ""
+    if IDENTIFIER_VARIABLE_NAME in variables:
+        identifier_name = IDENTIFIER_VARIABLE_NAME
+    else:
+        # Fall back to the first variable that is typed as an identifier
+        for var_name, var_def in variables.items():
+            if (
+                var_def.get("@type") == IDENTIFIER_VARIABLE_TYPE
+                or var_def.get("dataType") == "identifier"
+            ):
+                identifier_name = var_name
+                break
+
+    if not identifier_name:
+        safe_log(
+            "warning",
+            "Schema does not describe an identifier variable; "
+            f"using '{DEFAULT_IDENTIFIER_PREDICATE}' and "
+            f"'{DEFAULT_IDENTIFIER_CLASS}' instead",
+        )
+        return {
+            "predicate": DEFAULT_IDENTIFIER_PREDICATE,
+            "class": DEFAULT_IDENTIFIER_CLASS,
+        }
+
+    # The identifier is described without a schemaReconstruction, which means that its
+    # path is the bare predicate; a reconstruction is honoured should one be added
+    predicate = (
+        build_predicate_path(identifier_name, schema) or DEFAULT_IDENTIFIER_PREDICATE
+    )
+    identifier_class = (
+        variables[identifier_name].get("class") or DEFAULT_IDENTIFIER_CLASS
+    )
+
+    return {"predicate": predicate, "class": identifier_class}
 
 
 def get_variable_query_params(variable_name: str, schema: dict) -> dict:

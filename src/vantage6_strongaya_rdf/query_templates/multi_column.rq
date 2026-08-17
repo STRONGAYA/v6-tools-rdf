@@ -1,12 +1,4 @@
-PREFIX dbo: <http://um-cds/ontologies/databaseontology/>
-PREFIX roo: <http://www.cancerdata.org/roo/>
-PREFIX ncit: <http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#>
-PREFIX rdf: <http://www.w3.org/1999/02/22-rdf-syntax-ns#>
-PREFIX owl: <http://www.w3.org/2002/07/owl#>
-PREFIX sio: <http://semanticscience.org/resource/>
-PREFIX sct: <http://snomed.info/id/>
-PREFIX strongaya: <https://strongaya.eu/>
-PREFIX rdfs: <http://www.w3.org/2000/01/rdf-schema#>
+PLACEHOLDER_PREFIXES
 
 SELECT
 	?p1
@@ -22,12 +14,12 @@ WHERE {
   {
     SELECT DISTINCT ?patientID ?patientID2
     WHERE {
-      ?p1 sio:SIO_000673 ?idNode1 .
-      ?idNode1 a ncit:C25364 ;
+      ?p1 PLACEHOLDER_ID_PREDICATE ?idNode1 .
+      ?idNode1 a PLACEHOLDER_ID_CLASS ;
                dbo:has_cell/dbo:has_value ?patientID .
 
-      ?p2 sio:SIO_000673 ?idNode2 .
-      ?idNode2 a ncit:C25364 ;
+      ?p2 PLACEHOLDER_ID_PREDICATE ?idNode2 .
+      ?idNode2 a PLACEHOLDER_ID_CLASS ;
                dbo:has_cell/dbo:has_value ?patientID2 .
 
       {
@@ -49,8 +41,8 @@ WHERE {
         ?subClass 
         (SAMPLE(?value) AS ?any_value)
     WHERE {
-      ?p1 sio:SIO_000673 ?idNode1 .
-      ?idNode1 a ncit:C25364 ;
+      ?p1 PLACEHOLDER_ID_PREDICATE ?idNode1 .
+      ?idNode1 a PLACEHOLDER_ID_CLASS ;
                dbo:has_cell/dbo:has_value ?patientID .
             
       ?p1 PLACEHOLDER_PREDICATE_PATH_1 ?attr .
@@ -79,8 +71,8 @@ WHERE {
         ?subClass2
         (SAMPLE(?value2) AS ?any_value2)
     WHERE {
-      ?p2 sio:SIO_000673 ?idNode2 .
-      ?idNode2 a ncit:C25364 ;
+      ?p2 PLACEHOLDER_ID_PREDICATE ?idNode2 .
+      ?idNode2 a PLACEHOLDER_ID_CLASS ;
                dbo:has_cell/dbo:has_value ?patientID2 .
       ?p2 PLACEHOLDER_PREDICATE_PATH_2 ?attr2 .
       ?attr2 rdf:type PLACEHOLDER_CLASS_2 ;

@@ -24,7 +24,30 @@ from vantage6_strongaya_general.miscellaneous import safe_log
 from .sparql_client import post_sparql_query
 from .data_processing import add_missing_data_info, extract_subclass_info, clean_null_values
 from .schema_loader import get_schema_version, load_schema
-from .schema_parser import get_variable_query_params
+from .schema_parser import (
+    DEFAULT_IDENTIFIER_CLASS,
+    DEFAULT_IDENTIFIER_PREDICATE,
+    get_identifier_query_params,
+    get_schema_prefixes,
+    get_variable_query_params,
+)
+
+# Prefixes of the structure that the Triplifier produces; these describe the database
+# ontology rather than the semantic map and are therefore not part of the schema
+STRUCTURAL_PREFIXES = {
+    "dbo": "http://um-cds/ontologies/databaseontology/",
+    "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+}
+
+# Ontology prefixes that are used when no schema is available to derive them from
+DEFAULT_ONTOLOGY_PREFIXES = {
+    "ncit": "http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#",
+    "roo": "http://www.cancerdata.org/roo/",
+    "sct": "http://snomed.info/id/",
+    "sio": "http://semanticscience.org/resource/",
+    "strongaya": "https://strongaya.eu/",
+}
 
 NAUGHTY_WORD_LIST = [
     "DROP",
@@ -131,6 +154,73 @@ def _load_query_template(query_name: str) -> str:
     except Exception as e:
         safe_log("error", f"Error reading SPARQL query file: {e}.")
         return ""
+
+
+def _build_prefix_declarations(schema: Optional[dict] = None) -> str:
+    """
+    Compose the PREFIX declarations of a SPARQL query.
+
+    The ontology prefixes are derived from the schema, which prevents the queries from
+    diverging from the semantic map that they are built for. The prefixes that describe
+    the Triplifier's structure are always declared, as the schema does not hold them.
+
+    Args:
+        schema (Optional[dict]): The JSON-LD schema dictionary; when it is not provided,
+                                 the default ontology prefixes are declared instead.
+
+    Returns:
+        str: The PREFIX declarations of the query.
+    """
+    prefixes = dict(DEFAULT_ONTOLOGY_PREFIXES)
+
+    if schema:
+        schema_prefixes = get_schema_prefixes(schema)
+        if schema_prefixes:
+            # The schema is authoritative for the ontologies that it describes
+            prefixes.update(schema_prefixes)
+        else:
+            safe_log(
+                "warning",
+                "Schema does not declare any prefixes; using the default prefixes",
+            )
+
+    # The Triplifier's structure is not described by the schema and cannot be overridden
+    prefixes.update(STRUCTURAL_PREFIXES)
+
+    return "\n".join(
+        f"PREFIX {prefix}: <{uri}>" for prefix, uri in sorted(prefixes.items())
+    )
+
+
+def _prepare_query_template(
+    query_template: str, schema: Optional[dict] = None
+) -> str:
+    """
+    Complete the parts of a query template that do not depend on the queried variables.
+
+    Args:
+        query_template (str): The SPARQL query template.
+        schema (Optional[dict]): The JSON-LD schema dictionary; when it is not provided,
+                                 the default prefixes and identifier are used instead.
+
+    Returns:
+        str: The query template with its prefixes and identifier filled in.
+    """
+    if schema:
+        identifier_params = get_identifier_query_params(schema)
+    else:
+        identifier_params = {
+            "predicate": DEFAULT_IDENTIFIER_PREDICATE,
+            "class": DEFAULT_IDENTIFIER_CLASS,
+        }
+
+    return (
+        query_template.replace(
+            "PLACEHOLDER_PREFIXES", _build_prefix_declarations(schema)
+        )
+        .replace("PLACEHOLDER_ID_PREDICATE", identifier_params["predicate"])
+        .replace("PLACEHOLDER_ID_CLASS", identifier_params["class"])
+    )
 
 
 def _process_variable_query(
@@ -430,7 +520,9 @@ def collect_sparql_data(
             raise AlgorithmError("error", f"Failed to load schema: {e}")
 
     if query_type == "single_column":
-        query_template = _load_query_template("single_column")
+        query_template = _prepare_query_template(
+            _load_query_template("single_column"), schema
+        )
 
         intermediate_df = pd.DataFrame(columns=["patient_id", "sub_class", "value"])
 
@@ -458,7 +550,9 @@ def collect_sparql_data(
                 raise AlgorithmError("error", f"Error processing {variable}: {e}")
 
     elif query_type == "multi_column":
-        query_template = _load_query_template("multi_column")
+        query_template = _prepare_query_template(
+            _load_query_template("multi_column"), schema
+        )
 
         try:
             intermediate_df = _process_multi_column_query(
