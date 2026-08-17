@@ -10,9 +10,10 @@ File organisation:
 """
 
 import pandas as pd
+import re
 
 from importlib import resources
-from typing import List, Optional
+from typing import List, Optional, Tuple, Union
 
 from vantage6.algorithm.tools.exceptions import (
     UserInputError,
@@ -127,6 +128,29 @@ NAUGHTY_WORD_LIST = [
     "CEIL",
     "FLOOR",
 ]
+
+
+def _natural_sort_key(identifier: object) -> Tuple[Union[str, int], ...]:
+    """
+    Compose a sort key that orders textual identifiers in their natural order.
+
+    Identifiers are text, which means that a plain sort would place "10" before "2".
+    The numeric parts of an identifier are therefore compared as numbers, whereas its
+    textual parts are compared as text. The key always alternates between text and
+    number, so that identifiers of any shape remain comparable to one another.
+
+    Args:
+        identifier (object): The identifier to compose a sort key for.
+
+    Returns:
+        Tuple[Union[str, int], ...]: The identifier's sort key.
+    """
+    if identifier is None or identifier is pd.NA:
+        return ("",)
+
+    parts = re.split(r"(\d+)", str(identifier))
+
+    return tuple(int(part) if index % 2 else part for index, part in enumerate(parts))
 
 
 def _load_query_template(query_name: str) -> str:
@@ -257,14 +281,12 @@ def _assign_patient_id(result_df: pd.DataFrame, variable: str) -> pd.DataFrame:
                 f"records of another table.",
             )
 
-    result_df["patient_id"] = result_df["patientID"]
+    # Identifiers are kept as text, as that is what an RDF-store returns and what a
+    # dataset's identifiers often are. Converting them to a number where they happen to
+    # be numeric would make the identifier's type depend on the values of a single
+    # variable, after which the variables of separate tables could no longer be merged.
+    result_df["patient_id"] = identifiers
     result_df = result_df.drop(columns=["patientID"] + record_columns)
-
-    # Convert patient_id to numeric if possible for proper sorting
-    try:
-        result_df["patient_id"] = pd.to_numeric(result_df["patient_id"])
-    except (ValueError, TypeError):
-        pass  # Keep as string if conversion fails
 
     return result_df
 
@@ -584,16 +606,21 @@ def collect_sparql_data(
     else:
         raise UserInputError(f"Unknown query type: {query_type}.")
 
-    # Calculate the missing count using the specific notation
-    add_missing_data_info(intermediate_df, missing_data_notation)
-
     # Replace the missing value notation to prevent TypeErrors
     intermediate_df = intermediate_df.replace(missing_data_notation, pd.NA)
 
-    # Sort by patient_id to ensure consistent ordering
+    # Count the missing values once every notation of missing data is represented as
+    # such. Counting the dataset's own notation alone would leave the values that no
+    # record holds at all - the ones that the merge of the variables leaves empty -
+    # uncounted, which would make an absence of data an observation that is not
+    # actually observed.
+    add_missing_data_info(intermediate_df, pd.NA)
+
+    # Sort by patient_id to ensure consistent ordering; identifiers are text, so they
+    # are ordered naturally rather than lexicographically
     if not intermediate_df.empty and "patient_id" in intermediate_df.columns:
-        intermediate_df = intermediate_df.sort_values("patient_id").reset_index(
-            drop=True
-        )
+        intermediate_df = intermediate_df.sort_values(
+            "patient_id", key=lambda identifiers: identifiers.map(_natural_sort_key)
+        ).reset_index(drop=True)
 
     return intermediate_df
