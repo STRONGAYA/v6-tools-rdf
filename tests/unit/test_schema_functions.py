@@ -9,7 +9,16 @@ from pathlib import Path
 # Add src directory to path for importing library functions
 sys.path.insert(0, str(Path(__file__).parent.parent.parent / "src"))
 
-from vantage6_strongaya_rdf.schema_loader import load_schema  # noqa: E402
+import pytest  # noqa: E402
+
+from vantage6_strongaya_rdf.schema_loader import (  # noqa: E402
+    BUNDLED_SCHEMA_TAG,
+    SCHEMA_URL,
+    build_schema_url,
+    get_schema_version,
+    load_schema,
+    validate_schema,
+)
 from vantage6_strongaya_rdf.schema_parser import (  # noqa: E402
     build_predicate_path,
     get_intermediate_classes,
@@ -57,6 +66,76 @@ class TestSchemaLoader:
         # Should still get the bundled schema
         assert schema is not None
         assert isinstance(schema, dict)
+
+    def test_load_schema_without_fallback_raises(self):
+        """Test that an unreachable remote schema raises when no fallback is allowed."""
+        with pytest.raises(Exception):
+            load_schema(
+                use_remote=True,
+                schema_url="http://invalid-url-that-does-not-exist.com/schema.jsonld",
+                local_fallback=False,
+            )
+
+    def test_bundled_schema_originates_from_a_release(self):
+        """Test that the bundled schema is the release that the library records."""
+        schema = load_schema(use_remote=False)
+
+        # The recorded tag is the version of the bundled schema, prefixed with a "v"
+        assert BUNDLED_SCHEMA_TAG == f"v{get_schema_version(schema)}"
+
+    def test_schema_url_refers_to_a_release_tag(self):
+        """Test that remote schemas are retrieved from a release rather than a branch."""
+        # A branch is a moving target, whereas a release is a versioned contract
+        assert "refs/heads" not in SCHEMA_URL
+        assert f"refs/tags/{BUNDLED_SCHEMA_TAG}" in SCHEMA_URL
+        assert SCHEMA_URL.endswith("AYA_cancer_schema.jsonld")
+
+    def test_build_schema_url(self):
+        """Test composing the URL of a specific schema release."""
+        url = build_schema_url("v9.9.9")
+
+        assert "refs/tags/v9.9.9" in url
+        assert url.endswith("AYA_cancer_schema.jsonld")
+
+    def test_validate_bundled_schema(self):
+        """Test that the bundled schema holds the expected structure."""
+        # Should not raise
+        validate_schema(load_schema(use_remote=False))
+
+    def test_validate_schema_rejects_empty_document(self):
+        """Test that a document without variables is rejected."""
+        with pytest.raises(ValueError):
+            validate_schema({})
+
+    def test_validate_schema_rejects_unsupported_format(self):
+        """Test that an earlier, non JSON-LD, revision of the semantic map is rejected.
+
+        Such a document would otherwise be accepted silently, after which every
+        variable would fall back to the default variable property.
+        """
+        legacy_schema = {
+            "endpoint": "http://localhost:7200/repositories/userRepo/statements",
+            "prefixes": "PREFIX ncit: <http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#>",
+            "variable_info": {
+                "identifier": {
+                    "data_type": "identifier",
+                    "predicate": "sio:SIO_000673",
+                    "class": "ncit:C25364",
+                }
+            },
+        }
+
+        with pytest.raises(ValueError):
+            validate_schema(legacy_schema)
+
+    def test_validate_schema_rejects_variables_without_predicates(self):
+        """Test that variables that describe no structure are rejected."""
+        with pytest.raises(ValueError):
+            validate_schema({"schema": {"variables": {"identifier": {"label": "id"}}}})
+
+    def test_get_schema_version_of_unversioned_schema(self):
+        """Test that an unversioned schema does not break version reporting."""
+        assert get_schema_version({}) == "unknown"
 
 
 class TestSchemaParser:
@@ -339,11 +418,4 @@ class TestSchemaParser:
 
 
 if __name__ == "__main__":
-    # Run tests with pytest if available, otherwise just import to check for errors
-    try:
-        import pytest
-
-        pytest.main([__file__, "-v"])
-    except ImportError:
-        print("pytest not available, running basic import check")
-        print("All imports successful!")
+    pytest.main([__file__, "-v"])

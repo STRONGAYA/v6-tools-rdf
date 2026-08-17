@@ -23,7 +23,7 @@ from vantage6_strongaya_general.miscellaneous import safe_log
 
 from .sparql_client import post_sparql_query
 from .data_processing import add_missing_data_info, extract_subclass_info, clean_null_values
-from .schema_loader import load_schema
+from .schema_loader import get_schema_version, load_schema
 from .schema_parser import get_variable_query_params
 
 NAUGHTY_WORD_LIST = [
@@ -413,9 +413,17 @@ def collect_sparql_data(
             # Check if we should use remote schema
             use_remote = get_env_var("USE_REMOTE_SCHEMA", "false").lower() == "true"
             schema_url_env = get_env_var("SCHEMA_URL", schema_url)
+            schema_tag_env = get_env_var("SCHEMA_TAG", None)
 
             schema = load_schema(
-                use_remote=use_remote, schema_url=schema_url_env, local_fallback=True
+                use_remote=use_remote,
+                schema_url=schema_url_env,
+                schema_tag=schema_tag_env,
+                local_fallback=True,
+            )
+            safe_log(
+                "info",
+                f"Using AYA cancer schema version {get_schema_version(schema)}",
             )
         except Exception as e:
             safe_log("error", f"Failed to load schema: {e}")
