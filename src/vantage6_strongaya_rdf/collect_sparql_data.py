@@ -23,7 +23,11 @@ from vantage6.algorithm.tools.util import get_env_var
 from vantage6_strongaya_general.miscellaneous import safe_log
 
 from .sparql_client import post_sparql_query
-from .data_processing import add_missing_data_info, extract_subclass_info, clean_null_values
+from .data_processing import (
+    add_missing_data_info,
+    extract_subclass_info,
+    clean_null_values,
+)
 from .schema_loader import get_schema_version, load_schema
 from .schema_parser import (
     DEFAULT_IDENTIFIER_CLASS,
