@@ -37,15 +37,17 @@ def get_schema_prefixes(schema: dict) -> Dict[str, str]:
         # Skip JSON-LD special keys
         if key.startswith("@"):
             continue
-        # Only include string values (URI mappings)
-        if isinstance(value, str):
+        # Only include string values that look like absolute URIs.
+        # This excludes internal relative-path shorthand entries (e.g. "schema": "schema/")
+        # that are used for JSON-LD structural purposes rather than as ontology prefixes.
+        if isinstance(value, str) and value.startswith(("http://", "https://")):
             prefixes[key] = value
 
     # Extract from schema.prefixes (schema-specific location)
     schema_prefixes = schema.get("schema", {}).get("prefixes", {})
     for key, value in schema_prefixes.items():
-        # Only include string values (URI mappings)
-        if isinstance(value, str):
+        # Only include string values that look like absolute URIs
+        if isinstance(value, str) and value.startswith(("http://", "https://")):
             prefixes[key] = value
 
     safe_log("info", f"Extracted {len(prefixes)} prefixes from schema")

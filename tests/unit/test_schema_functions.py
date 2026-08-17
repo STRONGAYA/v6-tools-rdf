@@ -210,15 +210,21 @@ class TestSchemaParser:
         # Check for prefixes that should be in the schema
         expected_prefixes = ["ncit", "sio", "mesh", "roo"]
         for prefix in expected_prefixes:
-            assert prefix in prefixes, f"Expected prefix '{prefix}' not found in {list(prefixes.keys())}"
+            assert (
+                prefix in prefixes
+            ), f"Expected prefix '{prefix}' not found in {list(prefixes.keys())}"
 
     def test_get_schema_prefixes_values_are_strings(self):
         """Test that all prefix values are strings (URIs)."""
         prefixes = get_schema_prefixes(self.schema)
 
         for key, value in prefixes.items():
-            assert isinstance(value, str), f"Prefix '{key}' value is not a string: {type(value)}"
-            assert value.startswith("http"), f"Prefix '{key}' value does not look like a URI: {value}"
+            assert isinstance(
+                value, str
+            ), f"Prefix '{key}' value is not a string: {type(value)}"
+            assert value.startswith(
+                "http"
+            ), f"Prefix '{key}' value does not look like a URI: {value}"
 
     def test_get_schema_prefixes_handles_empty_schema(self):
         """Test get_schema_prefixes with empty schema."""
@@ -248,5 +254,4 @@ if __name__ == "__main__":
         pytest.main([__file__, "-v"])
     except ImportError:
         print("pytest not available, running basic import check")
-        
-print("All imports successful!")
+        print("All imports successful!")
