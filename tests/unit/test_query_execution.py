@@ -278,5 +278,61 @@ class TestSingleColumnQuery:
         assert result.empty
 
 
+class TestMultiColumnQuery:
+    """Test the multi-column query against the synthetic graph."""
+
+    def test_variables_of_the_same_table(self, sparql_endpoint):
+        """Test that two variables of a single table are fetched together."""
+        result = collect(
+            [BIOLOGICAL_SEX, AGE_AT_INITIAL_DIAGNOSIS], query_type="multi_column"
+        )
+
+        result = result.set_index("patient_id")
+        assert set(result.index) == {"ID_0001", "ID_0002"}
+        assert result.loc["ID_0001", BIOLOGICAL_SEX] == MALE
+        assert result.loc["ID_0001", AGE_AT_INITIAL_DIAGNOSIS] == "27"
+        assert result.loc["ID_0002", BIOLOGICAL_SEX] == FEMALE
+        assert result.loc["ID_0002", AGE_AT_INITIAL_DIAGNOSIS] == "31"
+
+    def test_variables_of_separate_tables(self, sparql_endpoint):
+        """Test that two variables of separate tables are joined on the patient.
+
+        The identity of the two records used to be resolved in a group that held
+        nothing but filters, in which the identifiers are out of scope; the query
+        therefore never returned anything at all.
+        """
+        result = collect(
+            [BIOLOGICAL_SEX, TIME_PROM_RECORDING], query_type="multi_column"
+        )
+
+        result = result.set_index("patient_id")
+        assert set(result.index) == {"ID_0001", "ID_0002"}
+
+        # ID_0001's records hold the same identifier; ID_0002's records are linked
+        # through a foreign key
+        assert result.loc["ID_0001", BIOLOGICAL_SEX] == MALE
+        assert result.loc["ID_0001", TIME_PROM_RECORDING] == "42"
+        assert result.loc["ID_0002", BIOLOGICAL_SEX] == FEMALE
+        assert result.loc["ID_0002", TIME_PROM_RECORDING] == "7"
+
+    def test_values_of_separate_patients_are_not_combined(self, sparql_endpoint):
+        """Test that the values of a record are not paired with those of another."""
+        result = collect(
+            [BIOLOGICAL_SEX, TIME_PROM_RECORDING], query_type="multi_column"
+        )
+
+        # The record without an identifier holds no time of PROM recording, so it
+        # cannot - and must not - be paired with the recording of another record
+        assert RECORD_WITHOUT_IDENTIFIER not in set(result["patient_id"])
+        assert len(result) == 2
+
+    def test_multi_column_requires_two_variables(self, sparql_endpoint):
+        """Test that the multi-column query rejects any other number of variables."""
+        from vantage6.algorithm.tools.exceptions import AlgorithmError
+
+        with pytest.raises(AlgorithmError):
+            collect([BIOLOGICAL_SEX], query_type="multi_column")
+
+
 if __name__ == "__main__":
     pytest.main([__file__, "-v"])

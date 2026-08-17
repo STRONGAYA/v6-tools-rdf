@@ -5,90 +5,76 @@ SELECT
 	?p2
     ?patientID
     ?subClass
-    ?any_value
     ?subClass2
-    ?any_value2
+    (SAMPLE(?value) AS ?any_value)
+    (SAMPLE(?value2) AS ?any_value2)
 WHERE {
 
-  # 1) RESOLVE PATIENT IDENTITY (FK or flat table)
-  {
-    SELECT DISTINCT ?patientID ?patientID2
-    WHERE {
-      ?p1 PLACEHOLDER_ID_PREDICATE ?idNode1 .
-      ?idNode1 a PLACEHOLDER_ID_CLASS ;
-               dbo:has_cell/dbo:has_value ?patientID .
+  # 1) FETCH FIRST ATTRIBUTE
+  ?p1 PLACEHOLDER_PREDICATE_PATH_1 ?attr .
+  ?attr rdf:type PLACEHOLDER_CLASS_1 ;
+        rdf:type ?mainClass ;
+        dbo:has_cell ?subcell .
+  ?subcell dbo:has_value ?value .
 
-      ?p2 PLACEHOLDER_ID_PREDICATE ?idNode2 .
-      ?idNode2 a PLACEHOLDER_ID_CLASS ;
-               dbo:has_cell/dbo:has_value ?patientID2 .
+  FILTER STRSTARTS(STR(?mainClass), STR(PLACEHOLDER_ONTOLOGY_1))
 
-      {
-        ?idNode2 dbo:fk_refers_to ?idNode1
-      }
-      UNION
-      {
-        FILTER NOT EXISTS { ?idNode2 dbo:fk_refers_to ?idNode1 }
-        FILTER(?patientID2 = ?patientID)
-      }
-    }
+  OPTIONAL {
+    ?subcell rdf:type ?subClass .
+    FILTER (STRSTARTS(STR(?subClass), STR(PLACEHOLDER_ONTOLOGY_1)) || STRSTARTS(STR(?subClass), STR(strongaya:)))
+    ?subClass rdfs:subClassOf ?mainClass .
+    FILTER(!sameTerm(?subClass, ?mainClass))
   }
 
-  # 2) AGGREGATE FIRST ATTRIBUTE
-  {
-    SELECT
-        ?p1
-        ?patientID
-        ?subClass 
-        (SAMPLE(?value) AS ?any_value)
-    WHERE {
-      ?p1 PLACEHOLDER_ID_PREDICATE ?idNode1 .
-      ?idNode1 a PLACEHOLDER_ID_CLASS ;
-               dbo:has_cell/dbo:has_value ?patientID .
-            
-      ?p1 PLACEHOLDER_PREDICATE_PATH_1 ?attr .
-      ?attr rdf:type PLACEHOLDER_CLASS_1 ;
-            rdf:type ?mainClass ;
-            dbo:has_cell ?subcell .
-      ?subcell dbo:has_value ?value .
+  # 2) FETCH SECOND ATTRIBUTE
+  ?p2 PLACEHOLDER_PREDICATE_PATH_2 ?attr2 .
+  ?attr2 rdf:type PLACEHOLDER_CLASS_2 ;
+         rdf:type ?mainClass2 ;
+         dbo:has_cell ?subcell2 .
+  ?subcell2 dbo:has_value ?value2 .
 
-      FILTER STRSTARTS(STR(?mainClass), STR(PLACEHOLDER_ONTOLOGY_1))
+  FILTER STRSTARTS(STR(?mainClass2), STR(PLACEHOLDER_ONTOLOGY_2))
 
-      OPTIONAL {
-        ?subcell rdf:type ?subClass .
-        FILTER (STRSTARTS(STR(?subClass), STR(PLACEHOLDER_ONTOLOGY_1)) || STRSTARTS(STR(?subClass), STR(strongaya:)))
-        ?subClass rdfs:subClassOf ?mainClass .
-        FILTER(!sameTerm(?subClass, ?mainClass))
-      }
-    }
-    GROUP BY ?p1 ?patientID ?subClass
+  OPTIONAL {
+    ?subcell2 rdf:type ?subClass2 .
+    FILTER (STRSTARTS(STR(?subClass2), STR(PLACEHOLDER_ONTOLOGY_2)) || STRSTARTS(STR(?subClass2), STR(strongaya:)))
+    ?subClass2 rdfs:subClassOf ?mainClass2 .
+    FILTER(!sameTerm(?subClass2, ?mainClass2))
   }
 
-  # 3) AGGREGATE SECOND ATTRIBUTE
-  {
-    SELECT
-        ?p2
-        ?patientID2
-        ?subClass2
-        (SAMPLE(?value2) AS ?any_value2)
-    WHERE {
-      ?p2 PLACEHOLDER_ID_PREDICATE ?idNode2 .
-      ?idNode2 a PLACEHOLDER_ID_CLASS ;
-               dbo:has_cell/dbo:has_value ?patientID2 .
-      ?p2 PLACEHOLDER_PREDICATE_PATH_2 ?attr2 .
-      ?attr2 rdf:type PLACEHOLDER_CLASS_2 ;
-             rdf:type ?mainClass2 ;
-             dbo:has_cell ?subcell2 .
-      ?subcell2 dbo:has_value ?value2 .
+  # 3) RESOLVE PATIENT IDENTITY (foreign key, flat table or record URI)
+  # Both records are identified in the same manner, after which the two attributes are
+  # kept only when their records describe the same patient:
+  # - a record of a linked table is identified by the identifier that its foreign key
+  #   refers to, so that a record of a child table is identified by the identifier of
+  #   the record it refers to;
+  # - a record of a flat table is identified by its own identifier;
+  # - a record whose identifier cannot be retrieved is identified by its own URI, so
+  #   that it is still observed and counted, albeit only joinable with itself.
+  OPTIONAL {
+    ?p1 PLACEHOLDER_ID_PREDICATE ?idNode1 .
+    ?idNode1 rdf:type PLACEHOLDER_ID_CLASS ;
+             dbo:has_cell/dbo:has_value ?idValue1 .
 
-      FILTER STRSTARTS(STR(?mainClass2), STR(PLACEHOLDER_ONTOLOGY_2))
-
-      OPTIONAL {
-        ?subcell2 rdf:type ?subClass2 .
-        FILTER (STRSTARTS(STR(?subClass2), STR(PLACEHOLDER_ONTOLOGY_2)) || STRSTARTS(STR(?subClass2), STR(strongaya:)))
-        ?subClass2 rdfs:subClassOf ?mainClass2 .
-        FILTER(!sameTerm(?subClass2, ?mainClass2))
-      }
+    OPTIONAL {
+      ?idNode1 dbo:fk_refers_to ?referencedIdNode1 .
+      ?referencedIdNode1 dbo:has_cell/dbo:has_value ?referencedIdValue1 .
     }
-    GROUP BY ?p2 ?patientID2 ?subClass2
   }
+  BIND(COALESCE(?referencedIdValue1, ?idValue1, STR(?p1)) AS ?patientID)
+
+  OPTIONAL {
+    ?p2 PLACEHOLDER_ID_PREDICATE ?idNode2 .
+    ?idNode2 rdf:type PLACEHOLDER_ID_CLASS ;
+             dbo:has_cell/dbo:has_value ?idValue2 .
+
+    OPTIONAL {
+      ?idNode2 dbo:fk_refers_to ?referencedIdNode2 .
+      ?referencedIdNode2 dbo:has_cell/dbo:has_value ?referencedIdValue2 .
+    }
+  }
+  BIND(COALESCE(?referencedIdValue2, ?idValue2, STR(?p2)) AS ?patientID2)
+
+  FILTER(STR(?patientID) = STR(?patientID2))
 }
+GROUP BY ?p1 ?p2 ?patientID ?subClass ?subClass2

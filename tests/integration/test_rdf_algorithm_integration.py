@@ -129,6 +129,30 @@ def test_configurations(rdf_store):
             },
             "query_type": "multi_column",
         },
+        "standard_dataset_linked_tables_multi_column": {
+            "database_label": "rdf_store",  # Always use rdf_store as this refers to the RDF-store setup
+            "variables_to_extract": {
+                # Biological sex is held by the first table, whereas the time of PROM
+                # recording is held by the second table
+                "ncit:C28421": {
+                    "datatype": "categorical",
+                },
+                "ncit:C192402": {
+                    "datatype": "numerical",
+                },
+            },
+            "query_type": "multi_column",
+        },
+        "standard_dataset_intermediate_class_variable": {
+            "database_label": "rdf_store",  # Always use rdf_store as this refers to the RDF-store setup
+            "variables_to_extract": {
+                # The time of PROM recording is nested within the PROM container class
+                "ncit:C192402": {
+                    "datatype": "numerical",
+                },
+            },
+            "query_type": "single_column",
+        },
         "standard_dataset_bad_actor": {
             "database_label": "rdf_store",  # Always use rdf_store as this refers to the RDF-store setup
             "variables_to_extract": {
@@ -224,6 +248,8 @@ class TestAlgorithmComponent:
         [
             "standard_dataset",
             "standard_dataset_multi_column",
+            "standard_dataset_linked_tables_multi_column",
+            "standard_dataset_intermediate_class_variable",
             "standard_dataset_incorrect_input",
             "standard_dataset_bad_actor",
             "standard_dataset_missing_variable_input",
@@ -382,6 +408,91 @@ def extract_data_from_result(client, task) -> List[pd.DataFrame]:
     return dataframes
 
 
+def normalise_values(values: pd.Series) -> pd.Series:
+    """
+    Represent values as comparable strings, with a single notation for missing values.
+
+    :param values: pd.Series holding the values to normalise
+    :return: pd.Series holding the normalised values
+    """
+    return (
+        values.astype(str)
+        .replace({"None": "", "nan": "", "NaN": "", "<NA>": "", "none": ""})
+        .str.strip()
+    )
+
+
+def determine_coverage_acceptance(
+    federated_result: List[pd.DataFrame],
+    coverage_variables: List[str],
+    expected_df: pd.DataFrame,
+) -> bool:
+    """
+    Validate results of variables that the expected data holds no values for.
+
+    The expected data holds the values of the first table only, which is why the
+    variables of the second table - such as the time of PROM recording, which is nested
+    within the PROM container class - are validated on their coverage: every patient of
+    the expected data should hold a value for them. The variables that the expected data
+    does hold are still compared to their expected values.
+
+    :param federated_result: List[pd.DataFrame] with the extracted values
+    :param coverage_variables: The variables that the expected data holds no values for
+    :param expected_df: pd.DataFrame with the expected data
+    :return: bool indicating whether the results are accepted
+    """
+    for index, result_df in enumerate(federated_result):
+        for variable in coverage_variables:
+            if variable not in result_df.columns:
+                print(f"Validation failed: DataFrame {index} lacks column '{variable}'")
+                return False
+
+            missing_values = int(result_df[variable].isna().sum())
+            if missing_values:
+                print(
+                    f"Validation failed: DataFrame {index} holds {missing_values} "
+                    f"missing value(s) for '{variable}'"
+                )
+                return False
+
+        result_patients = set(normalise_values(result_df["patient_id"]))
+        expected_patients = set(normalise_values(expected_df["patient_id"]))
+        if result_patients != expected_patients:
+            print(
+                f"Validation failed: DataFrame {index} holds "
+                f"{len(result_patients)} patient(s) instead of "
+                f"{len(expected_patients)}"
+            )
+            return False
+
+        # Values of the variables that the expected data does hold should still match
+        merged = result_df.merge(
+            expected_df, on="patient_id", suffixes=("_result", "_expected")
+        )
+        for variable in expected_df.columns:
+            if variable == "patient_id" or variable not in result_df.columns:
+                continue
+
+            differences = int(
+                (
+                    normalise_values(merged[f"{variable}_result"])
+                    != normalise_values(merged[f"{variable}_expected"])
+                ).sum()
+            )
+            if differences:
+                print(
+                    f"Validation failed: DataFrame {index} holds {differences} "
+                    f"differing value(s) for '{variable}'"
+                )
+                return False
+
+    print(
+        f"Validation passed: All {len(federated_result)} DataFrames hold the "
+        f"expected coverage"
+    )
+    return True
+
+
 def determine_result_acceptance(
     federated_result: List[pd.DataFrame], algorithm_kwargs: Dict[str, Any] | None = None
 ) -> bool:
@@ -432,6 +543,20 @@ def determine_result_acceptance(
                     df.empty
                 ), "Result DataFrame should be empty for non-existing variable"
             return True
+
+        # Special case: variables that the expected data holds no values for
+        requested_variables = list(
+            (algorithm_kwargs.get("variables_to_extract") or {}).keys()
+        )
+        unexpected_variables = [
+            variable
+            for variable in requested_variables
+            if variable not in expected_data[0].columns
+        ]
+        if unexpected_variables:
+            return determine_coverage_acceptance(
+                result_dataframes, unexpected_variables, expected_data[0]
+            )
 
         if len(result_dataframes) != len(expected_data):
             print(
