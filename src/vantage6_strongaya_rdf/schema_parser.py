@@ -168,7 +168,7 @@ def _build_class_node_segments(
                 segments.extend(intermediate_segments)
                 continue
             safe_log(
-                "warning",
+                "warn",
                 f"Could not resolve the path to intermediate class '{item_class}'; "
                 f"using its own predicate instead",
             )
@@ -212,7 +212,7 @@ def resolve_intermediate_class_path(
     """
     if target_class in resolving:
         safe_log(
-            "warning",
+            "warn",
             f"Circular intermediate class definition detected for '{target_class}'",
         )
         return []
@@ -248,7 +248,7 @@ def resolve_intermediate_class_path(
     if hop_predicate and hop_predicate not in hop_predicates:
         if hop_predicates:
             safe_log(
-                "warning",
+                "warn",
                 f"Predicate '{hop_predicate}' declared for intermediate class "
                 f"'{target_class}' differs from the schema's "
                 f"{sorted(hop_predicates)}; both are considered",
@@ -284,7 +284,7 @@ def build_predicate_path(variable_name: str, schema: dict) -> str:
     variables = _get_variables(schema)
 
     if variable_name not in variables:
-        safe_log("warning", f"Variable '{variable_name}' not found in schema")
+        safe_log("warn", f"Variable '{variable_name}' not found in schema")
         return ""
 
     variable_definition = variables[variable_name]
@@ -297,7 +297,7 @@ def build_predicate_path(variable_name: str, schema: dict) -> str:
         segments.append(main_predicate)
 
     if not segments:
-        safe_log("warning", f"No predicates found for variable '{variable_name}'")
+        safe_log("warn", f"No predicates found for variable '{variable_name}'")
         return ""
 
     # Format: predicate1/predicate2
@@ -376,7 +376,7 @@ def get_identifier_query_params(schema: dict) -> dict:
 
     if not identifier_name:
         safe_log(
-            "warning",
+            "warn",
             "Schema does not describe an identifier variable; "
             f"using '{DEFAULT_IDENTIFIER_PREDICATE}' and "
             f"'{DEFAULT_IDENTIFIER_CLASS}' instead",
@@ -420,7 +420,7 @@ def get_variable_query_params(variable_name: str, schema: dict) -> dict:
 
     if not resolved_name:
         safe_log(
-            "warning",
+            "warn",
             f"Variable '{variable_name}' not found in schema by name or class",
         )
         return {}

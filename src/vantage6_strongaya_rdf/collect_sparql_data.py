@@ -180,7 +180,7 @@ def _build_prefix_declarations(schema: Optional[dict] = None) -> str:
             prefixes.update(schema_prefixes)
         else:
             safe_log(
-                "warning",
+                "warn",
                 "Schema does not declare any prefixes; using the default prefixes",
             )
 
@@ -223,6 +223,56 @@ def _prepare_query_template(
     )
 
 
+def _assign_patient_id(result_df: pd.DataFrame, variable: str) -> pd.DataFrame:
+    """
+    Determine the patient identifier of a query result.
+
+    A record whose identifier could not be retrieved is identified by its own URI, so
+    that the record is still observed and counted rather than silently disappearing
+    from the results. Such records are reported, as they cannot be linked to the
+    records of another table.
+
+    Args:
+        result_df (pd.DataFrame): The DataFrame containing the query results.
+        variable (str): The variable(s) that were queried; used for reporting.
+
+    Returns:
+        pd.DataFrame: The DataFrame with a 'patient_id' column.
+    """
+    if "patientID" not in result_df.columns:
+        raise AlgorithmError(
+            f"Query results for {variable} do not hold a patient identifier."
+        )
+
+    # Columns that hold the URI of the record that the values originate from
+    record_columns = [
+        column for column in ["patient", "p1", "p2"] if column in result_df.columns
+    ]
+
+    identifiers = result_df["patientID"].astype(str)
+    for record_column in record_columns:
+        fallback_count = int((identifiers == result_df[record_column].astype(str)).sum())
+        if fallback_count:
+            safe_log(
+                "warn",
+                f"Could not retrieve the identifier of {fallback_count} record(s) while "
+                f"querying {variable}; the record's own URI is used as identifier "
+                f"instead, which means that these records cannot be linked to the "
+                f"records of another table.",
+            )
+
+    result_df["patient_id"] = result_df["patientID"]
+    result_df = result_df.drop(columns=["patientID"] + record_columns)
+
+    # Convert patient_id to numeric if possible for proper sorting
+    try:
+        result_df["patient_id"] = pd.to_numeric(result_df["patient_id"])
+    except (ValueError, TypeError):
+        pass  # Keep as string if conversion fails
+
+    return result_df
+
+
 def _process_variable_query(
     endpoint: str,
     query_template: str,
@@ -262,7 +312,7 @@ def _process_variable_query(
 
         if not query_params:
             safe_log(
-                "warning",
+                "warn",
                 f"Could not get query params for {variable} from schema, using fallback",
             )
             # Fallback to simple replacement
@@ -293,23 +343,7 @@ def _process_variable_query(
     result = post_sparql_query(endpoint=endpoint, query=query)
 
     if result:
-        result_df = pd.DataFrame(result)
-
-        # Handle both old and new column names
-        if "patient" in result_df.columns:
-            result_df.drop(columns=["patient"], inplace=True)
-
-        # Use patientID if available, otherwise use index
-        if "patientID" in result_df.columns:
-            result_df["patient_id"] = result_df["patientID"]
-            result_df.drop(columns=["patientID"], inplace=True)
-            # Convert patient_id to numeric if possible for proper sorting
-            try:
-                result_df["patient_id"] = pd.to_numeric(result_df["patient_id"])
-            except (ValueError, TypeError):
-                pass  # Keep as string if conversion fails
-        else:
-            result_df["patient_id"] = result_df.index
+        result_df = _assign_patient_id(pd.DataFrame(result), variable)
 
         # Handle subClass column name variations
         if "subClass" in result_df.columns:
@@ -379,7 +413,7 @@ def _process_multi_column_query(
                 ontology_prefix = query_params.get("ontology_prefix", ontology_part)
             else:
                 safe_log(
-                    "warning",
+                    "warn",
                     f"Could not get query params for {variable} from schema, "
                     "using fallback",
                 )
@@ -403,23 +437,7 @@ def _process_multi_column_query(
     if not result:
         return pd.DataFrame(columns=["patient_id", var1, var2])
 
-    result_df = pd.DataFrame(result)
-
-    # Drop patient URI columns
-    for col in ["p1", "p2"]:
-        if col in result_df.columns:
-            result_df.drop(columns=[col], inplace=True)
-
-    # Use patientID if available, otherwise use index
-    if "patientID" in result_df.columns:
-        result_df["patient_id"] = result_df["patientID"]
-        result_df.drop(columns=["patientID"], inplace=True)
-        try:
-            result_df["patient_id"] = pd.to_numeric(result_df["patient_id"])
-        except (ValueError, TypeError):
-            pass
-    else:
-        result_df["patient_id"] = result_df.index
+    result_df = _assign_patient_id(pd.DataFrame(result), f"{var1} and {var2}")
 
     # Process first variable: subClass + any_value -> var1
     if "subClass" in result_df.columns:

@@ -7,21 +7,32 @@ SELECT DISTINCT
 	(SAMPLE(?value) AS ?any_value)
 
 WHERE {      
-    # ---------- Fetch patient ID from Table ----------
-    ?patient PLACEHOLDER_ID_PREDICATE ?patientidNode.
-    ?patientidNode rdf:type PLACEHOLDER_ID_CLASS ;
-    				dbo:has_cell/dbo:has_value ?patientID .
-    
     # ---------- Fetch patient attribute from Table ----------   
     ?patient PLACEHOLDER_PREDICATE_PATH ?sub_class_type .
     ?sub_class_type rdf:type ?main_class ;
     				  rdf:type PLACEHOLDER_CLASS ;
                       dbo:has_cell ?subcell.
     ?subcell dbo:has_value ?value .
+
+    # ---------- Fetch patient ID from Table ----------
+    # The identifier is optional; a record whose identifier cannot be retrieved is
+    # identified by its own URI instead, so that it is still observed and counted.
+    # A record of a linked table is identified by the identifier that its foreign key
+    # refers to, so that it lines up with the records of the table it refers to.
+    OPTIONAL {
+        ?patient PLACEHOLDER_ID_PREDICATE ?patientidNode.
+        ?patientidNode rdf:type PLACEHOLDER_ID_CLASS ;
+                       dbo:has_cell/dbo:has_value ?identifierValue .
+
+        OPTIONAL {
+            ?patientidNode dbo:fk_refers_to ?referencedIdNode .
+            ?referencedIdNode dbo:has_cell/dbo:has_value ?referencedIdValue .
+        }
+    }
+    BIND(COALESCE(?referencedIdValue, ?identifierValue, STR(?patient)) AS ?patientID)
     
  	# ---------- subClass and values ----------
     FILTER STRSTARTS(STR(?main_class), STR(PLACEHOLDER_ONTOLOGY))
-    BIND(STRAFTER(STR(?main_class), STR(PLACEHOLDER_ONTOLOGY)) AS ?patientTypeCode)
 
     OPTIONAL {
         ?subcell rdf:type ?subClass .

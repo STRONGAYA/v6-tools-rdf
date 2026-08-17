@@ -106,11 +106,11 @@ def resolve_latest_schema_tag() -> Optional[str]:
         response.raise_for_status()
         tag = response.json().get("tag_name")
     except Exception as e:
-        safe_log("warning", f"Failed to determine the latest schema release: {e}")
+        safe_log("warn", f"Failed to determine the latest schema release: {e}")
         return None
 
     if not tag:
-        safe_log("warning", "Latest schema release does not declare a tag")
+        safe_log("warn", "Latest schema release does not declare a tag")
         return None
 
     safe_log("info", f"Latest schema release is tagged '{tag}'")
@@ -175,7 +175,7 @@ def load_schema(
             safe_log("info", "Successfully loaded schema from remote URL")
             return schema_data
         except Exception as e:
-            safe_log("warning", f"Failed to fetch schema from remote URL: {e}")
+            safe_log("warn", f"Failed to fetch schema from remote URL: {e}")
             schema_data = None
             if not local_fallback:
                 raise Exception(
