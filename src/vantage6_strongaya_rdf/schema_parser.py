@@ -7,8 +7,51 @@ dynamic SPARQL predicate paths based on schemaReconstruction.
 ------------------------------------------------------------------------------
 """
 
-from typing import List
+from typing import Dict, List
 from vantage6_strongaya_general.miscellaneous import safe_log
+
+
+def get_schema_prefixes(schema: dict) -> Dict[str, str]:
+    """
+    Extract all prefix mappings from the JSON-LD schema.
+
+    Prefixes are extracted from two locations:
+    1. The @context section (top-level JSON-LD context)
+    2. The schema.prefixes section (schema-specific prefix definitions)
+
+    When the same prefix appears in both locations, the value from
+    schema.prefixes takes precedence.
+
+    Args:
+        schema: The full schema dictionary loaded from JSON-LD
+
+    Returns:
+        Dictionary mapping prefix names (without colon) to their URI values.
+        Example: {"ncit": "http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#", ...}
+    """
+    prefixes = {}
+
+    # Extract from @context (JSON-LD standard location)
+    context = schema.get("@context", {})
+    for key, value in context.items():
+        # Skip JSON-LD special keys
+        if key.startswith("@"):
+            continue
+        # Only include string values that look like absolute URIs.
+        # This excludes internal relative-path shorthand entries (e.g. "schema": "schema/")
+        # that are used for JSON-LD structural purposes rather than as ontology prefixes.
+        if isinstance(value, str) and value.startswith(("http://", "https://")):
+            prefixes[key] = value
+
+    # Extract from schema.prefixes (schema-specific location)
+    schema_prefixes = schema.get("schema", {}).get("prefixes", {})
+    for key, value in schema_prefixes.items():
+        # Only include string values that look like absolute URIs
+        if isinstance(value, str) and value.startswith(("http://", "https://")):
+            prefixes[key] = value
+
+    safe_log("info", f"Extracted {len(prefixes)} prefixes from schema")
+    return prefixes
 
 
 def resolve_intermediate_class_path(target_class: str, schema: dict) -> List[str]:
