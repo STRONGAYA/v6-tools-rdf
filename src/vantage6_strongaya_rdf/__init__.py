@@ -18,4 +18,4 @@ __all__ = [
     "resolve_intermediate_class_path",
 ]
 
-__version__ = "1.0.1"
+__version__ = "1.0.2"
