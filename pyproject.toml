@@ -24,7 +24,7 @@ classifiers = [
 ]
 dependencies = [
     "pandas>=2.2.3",
-    "vantage6-algorithm-tools >=4.0.0,<=5.0.0",
+    "vantage6-algorithm-tools==4.15",
     "requests",
     "vantage6-strongaya-general @ git+https://github.com/STRONGAYA/v6-tools-general.git@v1.0.4"
 ]
