@@ -112,12 +112,12 @@ from vantage6_strongaya_general.miscellaneous import safe_log
 from vantage6_strongaya_rdf.collect_sparql_data import collect_sparql_data
 
 
-def partial_general_statistics(variables_to_analyse: dict) -> dict:
+def partial_general_statistics(variables_to_extract: dict) -> dict:
     """
     Execute the partial algorithm for some modelling using RDF data.
 
     Args:
-        variables_to_analyse (list): List of variables to analyse.
+        variables_to_extract (list): List of variables to extract.
 
     Returns:
         dict: A dictionary containing the computed general statistics.
@@ -125,7 +125,7 @@ def partial_general_statistics(variables_to_analyse: dict) -> dict:
     safe_log("info", "Executing partial algorithm for some modelling using RDF data.")
 
     # Set datatypes for each variable
-    df = collect_sparql_data(variables_to_analyse, query_type="single_column",
+    df = collect_sparql_data(list(variables_to_extract.keys()), query_type="single_column",
                              endpoint="http://localhost:7200/repositories/userRepo",
                              )
 
@@ -150,27 +150,59 @@ from vantage6_strongaya_rdf.collect_sparql_data import collect_sparql_data
 # Fetch data with schema-based predicate paths
 # Note: variable_property is optional when use_schema=True
 df = collect_sparql_data(
-    variables_to_analyse=['age_at_initial_diagnosis', 'gender'],
+    variables_to_extract=['age_at_initial_diagnosis', 'gender'],
     query_type="single_column",
     endpoint="http://localhost:7200/repositories/userRepo",
     use_schema=True  # Enable schema-based path generation
 )
 ```
 
+Variables can be requested by their name in the schema (`'age_at_initial_diagnosis'`) or by
+their class code (`'ncit:C156420'`).
+
+The predicate paths follow the structure that the schema describes as an ordered sequence,
+for instance `sio:SIO_000255/sio:SIO_000008`. Variables that are nested within an
+intermediate class - the PROM, EHR and HCPROM containers - are resolved to the route
+towards the container and the hop into it, since the schema attaches such a container to
+the node of another variable.
+
+Besides the predicate paths, the following is derived from the schema:
+
+- **the ontology prefixes** that the queries declare, which keeps the queries from
+  diverging from the semantic map that they are built for. Only the prefixes that describe
+  the structure that the Triplifier produces (`dbo:`, `rdf:` and `rdfs:`) remain fixed;
+- **the patient's identifier**; its predicate and class are taken from the schema's
+  identifier variable.
+
 ### Schema Loading Options
 
-The library bundles a copy of the AYA cancer schema and uses it by default. You can also fetch the latest version from GitHub:
+The library bundles a copy of the AYA cancer schema and uses it by default. The bundled copy
+is the schema of a specific release of
+the [semantic map](https://github.com/STRONGAYA/AYA-cancer-semantic-map); the release that it
+originates from is recorded as `BUNDLED_SCHEMA_TAG` in `schema_loader.py` and logged whenever
+a schema is loaded.
 
 ```python
 # Use bundled schema (default, no network needed)
 df = collect_sparql_data(variables, use_schema=True)
 
-# Or fetch latest from GitHub (requires network access)
+# Or fetch the schema of the latest release (requires network access)
 # Set environment variable: USE_REMOTE_SCHEMA=true
+
+# Or pin a specific release of the semantic map
+# Set environment variable: SCHEMA_TAG=v2.0.1
 
 # Or use a custom schema URL
 # Set environment variable: SCHEMA_URL=https://your-custom-url/schema.jsonld
 ```
+
+Remote schemas are retrieved from a release rather than from the semantic map's main branch,
+so that a node always runs against a versioned schema. A loaded schema is validated on its
+structure; a document that does not describe any variables raises rather than silently
+degrading every variable to `dbo:has_column`.
+
+A weekly workflow synchronises the bundled schema with the latest release of the semantic
+map and opens a pull request for review.
 
 ### Direct Schema Access
 
@@ -194,22 +226,73 @@ print(f"Ontology prefix: {params['ontology_prefix']}")
 The library now supports multi-column queries for fetching multiple variables in a single query:
 
 ```python
-# Note: Multi-column queries are designed for specific use cases
-# and may require additional configuration
+# Note: Multi-column queries fetch exactly two variables in a single query
 df = collect_sparql_data(
-    variables_to_analyse=['variable1', 'variable2'],
+    variables_to_extract=['variable1', 'variable2'],
     query_type="multi_column",
     endpoint="http://localhost:7200/repositories/userRepo",
     use_schema=True
 )
 ```
 
+Both records are identified in the same manner, after which the two attributes are kept
+when their records describe the same patient:
+
+- a record of a linked table is identified by the identifier that its foreign key
+  (`dbo:fk_refers_to`) refers to;
+- a record of a flat table is identified by its own identifier;
+- a record whose identifier cannot be retrieved is identified by its own URI.
+
+Note that a multi-column query only yields the patients that hold both variables, whereas a
+single-column query yields the union of the patients of each variable.
+
+A record that holds several values for the same variable - repeated measures, for instance -
+is represented by one sampled value per patient, as both queries group their results by
+patient.
+
+### Patient Identifiers
+
+The patient identifier (`patient_id`) is always text, whichever values a dataset holds; it is
+never converted to a number. An identifier is a label rather than a quantity, it may hold
+characters in one dataset and digits only in another, and converting it would make its type
+depend on the values of a single variable - after which the variables of separate tables
+could no longer be merged. Numeric identifiers are nevertheless ordered by their value rather
+than as text, so `"2"` precedes `"10"`.
+
+### Missing Patient Identifiers
+
+A record whose identifier cannot be retrieved is identified by its own URI rather than being
+dropped from the results, so that it is still observed and counted amongst the missing data.
+The number of records that fell back to their URI is reported as a warning; such records
+cannot be linked to the records of another table.
+
+### Missing Values
+
+An absence of data is an observation rather than an error: a patient that holds no value for
+a requested variable remains part of the results with an empty cell, and a variable that no
+record holds at all yields an empty column rather than no column.
+
+Every notation of missing data is counted as such in the missing-value statistics that the
+results carry: the Triplifier's `"NULL"` cells, a dataset's own notation (see
+`MISSING_DATA_NOTATION`) and the values that a patient simply does not hold.
+
+### Accepted Input
+
+A variable and a variable property are substituted into the query template as they are, so
+both are verified before they are used. Accepted are a class code (`ncit:C28421`), the name
+of a schema variable (`age_at_initial_diagnosis`) and an IRI between angle brackets; a
+property may in addition be a property path. Anything else - whitespace, braces, quotation
+marks, a hash - as well as any SPARQL keyword is refused with a `UserInputError` before a
+query is composed, since such input could otherwise extend the query with a clause of its
+own; a federated query towards another endpoint, for instance.
+
 ### Environment Variables
 
 The following environment variables can be used to configure schema loading:
 
-- `USE_REMOTE_SCHEMA`: Set to `"true"` to fetch schema from GitHub (default: `"false"`)
-- `SCHEMA_URL`: Custom URL to fetch schema from (overrides default GitHub URL)
+- `USE_REMOTE_SCHEMA`: Set to `"true"` to fetch the schema from GitHub (default: `"false"`)
+- `SCHEMA_TAG`: Release of the semantic map to fetch the schema from (default: its latest release)
+- `SCHEMA_URL`: Custom URL to fetch schema from (overrides the release URL)
 - `SPARQL_ENDPOINT`: Override the default SPARQL endpoint
 - `VARIABLE_PROPERTY`: Override the default variable property predicate (only used when `use_schema=False` or as fallback)
 - `MISSING_DATA_NOTATION`: Custom notation for missing data
@@ -234,6 +317,11 @@ tests/
 ├── unit/                                 # Unit tests for individual functions
 │   ├── test_library_functions.py         # Tests for library functions
 │   ├── test_schema_functions.py          # Tests for schema loader and parser
+│   ├── test_query_templates.py           # Tests for the construction of the queries
+│   ├── test_query_execution.py           # Tests that execute the queries on a synthetic graph
+│   ├── test_fallback_query_execution.py  # Tests that execute the queries without the schema
+│   ├── test_schema_contract.py           # Tests every variable of the schema and its snapshot
+│   └── snapshots/                        # Golden snapshot of every variable's predicate path
 ├── integration/                          # Integration tests
 │   └── test_vantage6_integration.py      # Data stratification workflows
 │   └── test_rdf_algorithm_integration.py # Vantage6 algorithm integration tests
@@ -252,8 +340,18 @@ tests/
 Install test dependencies:
 
 ```bash
-pip install pytest pytest-mock hypothesis faker
+pip install pytest pytest-mock hypothesis faker rdflib
 ```
+
+Or install the library's test dependencies directly:
+
+```bash
+pip install -e ".[test]"
+```
+
+`rdflib` is used to execute the generated SPARQL queries against a synthetic graph, which
+verifies the queries without an RDF-store; the tests that require it are skipped when it is
+not installed.
 
 ### Basic Test Execution
 
@@ -272,6 +370,31 @@ pytest tests/unit/test_library_functions.py
 
 # Run with verbose output
 pytest -v
+```
+
+### Guarding Against Schema Drift
+
+The bundled schema is synchronised with the semantic map automatically, and it describes far
+more variables than any test enumerates. Two mechanisms keep an update from silently changing
+what is queried:
+
+- `tests/unit/test_schema_contract.py` verifies every variable of the schema: it yields a
+  predicate path, that path holds no transitive or optional operator, every prefix that it
+  uses is declared, and the query that it produces parses as SPARQL;
+- `tests/unit/snapshots/predicate_paths.json` records the predicate path, class and ontology
+  prefix of every variable, so that a schema update yields a reviewable diff in the
+  synchronisation pull request. Regenerate it deliberately with:
+
+```bash
+UPDATE_PREDICATE_PATH_SNAPSHOT=1 pytest tests/unit/test_schema_contract.py
+```
+
+The contract can also be verified against the latest release of the semantic map itself, which
+reports an upstream change before a node encounters it. That test requires network access and
+is therefore not part of the default run:
+
+```bash
+RUN_NETWORK_TESTS=1 pytest -m network
 ```
 
 ### Test Categories

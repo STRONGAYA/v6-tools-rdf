@@ -10,9 +10,10 @@ File organisation:
 """
 
 import pandas as pd
+import re
 
 from importlib import resources
-from typing import List, Optional
+from typing import List, Optional, Tuple, Union
 
 from vantage6.algorithm.tools.exceptions import (
     UserInputError,
@@ -22,9 +23,36 @@ from vantage6.algorithm.tools.util import get_env_var
 from vantage6_strongaya_general.miscellaneous import safe_log
 
 from .sparql_client import post_sparql_query
-from .data_processing import add_missing_data_info, extract_subclass_info, clean_null_values
-from .schema_loader import load_schema
-from .schema_parser import get_variable_query_params
+from .data_processing import (
+    add_missing_data_info,
+    extract_subclass_info,
+    clean_null_values,
+)
+from .schema_loader import get_schema_version, load_schema
+from .schema_parser import (
+    DEFAULT_IDENTIFIER_CLASS,
+    DEFAULT_IDENTIFIER_PREDICATE,
+    get_identifier_query_params,
+    get_schema_prefixes,
+    get_variable_query_params,
+)
+
+# Prefixes of the structure that the Triplifier produces; these describe the database
+# ontology rather than the semantic map and are therefore not part of the schema
+STRUCTURAL_PREFIXES = {
+    "dbo": "http://um-cds/ontologies/databaseontology/",
+    "rdf": "http://www.w3.org/1999/02/22-rdf-syntax-ns#",
+    "rdfs": "http://www.w3.org/2000/01/rdf-schema#",
+}
+
+# Ontology prefixes that are used when no schema is available to derive them from
+DEFAULT_ONTOLOGY_PREFIXES = {
+    "ncit": "http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#",
+    "roo": "http://www.cancerdata.org/roo/",
+    "sct": "http://snomed.info/id/",
+    "sio": "http://semanticscience.org/resource/",
+    "strongaya": "https://strongaya.eu/",
+}
 
 NAUGHTY_WORD_LIST = [
     "DROP",
@@ -106,6 +134,83 @@ NAUGHTY_WORD_LIST = [
 ]
 
 
+# Shapes that a variable and a variable property may take. A variable is either a class
+# code ("ncit:C28421"), the name of a schema variable ("age_at_initial_diagnosis") or an
+# IRI between angle brackets; a property may in addition be a property path. Any other
+# shape - and in particular one that holds whitespace, braces, quotation marks or a hash -
+# is refused, as it would allow the input to close the triple pattern that it is
+# substituted into and to append a clause of its own to the query.
+PERMITTED_IRI_PATTERN = r"<[^\s<>{}\"'`|\\^]+>"
+PERMITTED_VARIABLE_PATTERN = re.compile(
+    r"^(?:[A-Za-z_][\w.\-]*(?::[\w.\-]+)?|" + PERMITTED_IRI_PATTERN + r")$"
+)
+PERMITTED_PROPERTY_PATTERN = re.compile(
+    r"^(?:[A-Za-z_(][\w.\-:/|()^]*|" + PERMITTED_IRI_PATTERN + r")$"
+)
+
+
+def _verify_input_safety(variable: str, variable_property: str) -> None:
+    """
+    Verify that a variable and a property can be substituted into a query safely.
+
+    Both are substituted into the query template as they are, which means that an input
+    of an unexpected shape could extend the query with a clause of its own; a federated
+    query towards another endpoint, for instance. The shape of the input is therefore
+    verified before it is used, and any SPARQL keyword within it is refused as well.
+
+    Args:
+        variable (str): The variable (or class code) to verify.
+        variable_property (str): The property that identifies the variable.
+
+    Raises:
+        UserInputError: If either input does not hold the expected shape or holds a
+                        SPARQL keyword.
+    """
+    for description, value, pattern in (
+        ("variable", variable, PERMITTED_VARIABLE_PATTERN),
+        ("variable property", variable_property, PERMITTED_PROPERTY_PATTERN),
+    ):
+        if not isinstance(value, str) or not pattern.match(value):
+            raise UserInputError(
+                f"Potentially dangerous input detected in the {description}; only a "
+                f"class code, a variable name or an IRI between angle brackets is "
+                f"accepted."
+            )
+
+    # The keywords are sought as whole words, as they occur within perfectly ordinary
+    # names as well; "IN" within "initial", for instance
+    for candidate in (variable, variable.split(":")[0] + ":", variable_property):
+        for word in NAUGHTY_WORD_LIST:
+            if re.search(r"\b" + re.escape(word) + r"\b", candidate, re.IGNORECASE):
+                raise UserInputError(
+                    "Potentially dangerous input detected in variable, ontology part, "
+                    f"or variable property; '{word}' is a SPARQL keyword."
+                )
+
+
+def _natural_sort_key(identifier: object) -> Tuple[Union[str, int], ...]:
+    """
+    Compose a sort key that orders textual identifiers in their natural order.
+
+    Identifiers are text, which means that a plain sort would place "10" before "2".
+    The numeric parts of an identifier are therefore compared as numbers, whereas its
+    textual parts are compared as text. The key always alternates between text and
+    number, so that identifiers of any shape remain comparable to one another.
+
+    Args:
+        identifier (object): The identifier to compose a sort key for.
+
+    Returns:
+        Tuple[Union[str, int], ...]: The identifier's sort key.
+    """
+    if identifier is None or identifier is pd.NA:
+        return ("",)
+
+    parts = re.split(r"(\d+)", str(identifier))
+
+    return tuple(int(part) if index % 2 else part for index, part in enumerate(parts))
+
+
 def _load_query_template(query_name: str) -> str:
     """
     Load the SPARQL query template from a file.
@@ -117,20 +222,131 @@ def _load_query_template(query_name: str) -> str:
         str: The SPARQL query template.
     """
     try:
-        # Use compatible importlib.resources syntax for Python 3.8
-        from importlib.resources import files, as_file
-        
-        # Get the package resource
-        package = files("vantage6_strongaya_rdf")
-        template_path = package.joinpath("query_templates").joinpath(f"{query_name}.rq")
-        
-        # Read the file content
-        with as_file(template_path) as path:
-            with open(path, "r") as file:
-                return file.read()
+        with (
+            resources.files("vantage6_strongaya_rdf")
+            .joinpath("query_templates")
+            .joinpath(f"{query_name}.rq")
+            .open("r") as file
+        ):
+            return file.read()
     except Exception as e:
         safe_log("error", f"Error reading SPARQL query file: {e}.")
         return ""
+
+
+def _build_prefix_declarations(schema: Optional[dict] = None) -> str:
+    """
+    Compose the PREFIX declarations of a SPARQL query.
+
+    The ontology prefixes are derived from the schema, which prevents the queries from
+    diverging from the semantic map that they are built for. The prefixes that describe
+    the Triplifier's structure are always declared, as the schema does not hold them.
+
+    Args:
+        schema (Optional[dict]): The JSON-LD schema dictionary; when it is not provided,
+                                 the default ontology prefixes are declared instead.
+
+    Returns:
+        str: The PREFIX declarations of the query.
+    """
+    prefixes = dict(DEFAULT_ONTOLOGY_PREFIXES)
+
+    if schema:
+        schema_prefixes = get_schema_prefixes(schema)
+        if schema_prefixes:
+            # The schema is authoritative for the ontologies that it describes
+            prefixes.update(schema_prefixes)
+        else:
+            safe_log(
+                "warn",
+                "Schema does not declare any prefixes; using the default prefixes",
+            )
+
+    # The Triplifier's structure is not described by the schema and cannot be overridden
+    prefixes.update(STRUCTURAL_PREFIXES)
+
+    return "\n".join(
+        f"PREFIX {prefix}: <{uri}>" for prefix, uri in sorted(prefixes.items())
+    )
+
+
+def _prepare_query_template(query_template: str, schema: Optional[dict] = None) -> str:
+    """
+    Complete the parts of a query template that do not depend on the queried variables.
+
+    Args:
+        query_template (str): The SPARQL query template.
+        schema (Optional[dict]): The JSON-LD schema dictionary; when it is not provided,
+                                 the default prefixes and identifier are used instead.
+
+    Returns:
+        str: The query template with its prefixes and identifier filled in.
+    """
+    if schema:
+        identifier_params = get_identifier_query_params(schema)
+    else:
+        identifier_params = {
+            "predicate": DEFAULT_IDENTIFIER_PREDICATE,
+            "class": DEFAULT_IDENTIFIER_CLASS,
+        }
+
+    return (
+        query_template.replace(
+            "PLACEHOLDER_PREFIXES", _build_prefix_declarations(schema)
+        )
+        .replace("PLACEHOLDER_ID_PREDICATE", identifier_params["predicate"])
+        .replace("PLACEHOLDER_ID_CLASS", identifier_params["class"])
+    )
+
+
+def _assign_patient_id(result_df: pd.DataFrame, variable: str) -> pd.DataFrame:
+    """
+    Determine the patient identifier of a query result.
+
+    A record whose identifier could not be retrieved is identified by its own URI, so
+    that the record is still observed and counted rather than silently disappearing
+    from the results. Such records are reported, as they cannot be linked to the
+    records of another table.
+
+    Args:
+        result_df (pd.DataFrame): The DataFrame containing the query results.
+        variable (str): The variable(s) that were queried; used for reporting.
+
+    Returns:
+        pd.DataFrame: The DataFrame with a 'patient_id' column.
+    """
+    if "patientID" not in result_df.columns:
+        raise AlgorithmError(
+            f"Query results for {variable} do not hold a patient identifier."
+        )
+
+    # Columns that hold the URI of the record that the values originate from
+    record_columns = [
+        column for column in ["patient", "p1", "p2"] if column in result_df.columns
+    ]
+
+    identifiers = result_df["patientID"].astype(str)
+    for record_column in record_columns:
+        fallback_count = int(
+            (identifiers == result_df[record_column].astype(str)).sum()
+        )
+        if fallback_count:
+            safe_log(
+                "warn",
+                f"Could not retrieve the identifier of {fallback_count} record(s) while "
+                f"querying {variable}; the record's own URI is used as identifier "
+                f"instead, which means that these records cannot be linked to the "
+                f"records of another table.",
+            )
+
+    # Identifiers are kept as text, as that is what an RDF-store returns and what a
+    # dataset's identifiers often are. Converting them to a number where they happen to
+    # be numeric would make the identifier's type depend on the values of a single
+    # variable, after which the variables of separate tables could no longer be merged.
+    result_df["patient_id"] = identifiers
+    result_df = result_df.drop(columns=["patientID"] + record_columns)
+
+    return result_df
 
 
 def _process_variable_query(
@@ -155,15 +371,10 @@ def _process_variable_query(
     Returns:
         pd.DataFrame: The DataFrame containing the query results.
     """
-    # Check for naughty words in the input variables early
+    # Verify the input before it is substituted into the query template
+    _verify_input_safety(variable, variable_property)
+
     ontology_part = variable.split(":")[0] + ":"
-    if any(
-        word in (variable, ontology_part, variable_property)
-        for word in NAUGHTY_WORD_LIST
-    ):
-        raise UserInputError(
-            "Potentially dangerous input detected in variable, ontology part, or variable property."
-        )
 
     # Build query based on whether we're using schema or not
     if use_schema and schema:
@@ -172,7 +383,7 @@ def _process_variable_query(
 
         if not query_params:
             safe_log(
-                "warning",
+                "warn",
                 f"Could not get query params for {variable} from schema, using fallback",
             )
             # Fallback to simple replacement
@@ -188,7 +399,6 @@ def _process_variable_query(
             query_template.replace("PLACEHOLDER_CLASS", main_class)
             .replace("PLACEHOLDER_ONTOLOGY", ontology_prefix)
             .replace("PLACEHOLDER_PREDICATE_PATH", predicate_path)
-            .replace("PLACEHOLDER_PREDICATE", predicate_path)  # Backward compatibility
         )
     else:
         # Use simple placeholder replacement (backward compatible)
@@ -196,30 +406,13 @@ def _process_variable_query(
             query_template.replace("PLACEHOLDER_CLASS", variable)
             .replace("PLACEHOLDER_ONTOLOGY", ontology_part)
             .replace("PLACEHOLDER_PREDICATE_PATH", variable_property)
-            .replace("PLACEHOLDER_PREDICATE", variable_property)
         )
 
     safe_log("info", f"Posting SPARQL query for {variable}.")
     result = post_sparql_query(endpoint=endpoint, query=query)
 
     if result:
-        result_df = pd.DataFrame(result)
-
-        # Handle both old and new column names
-        if "patient" in result_df.columns:
-            result_df.drop(columns=["patient"], inplace=True)
-
-        # Use patientID if available, otherwise use index
-        if "patientID" in result_df.columns:
-            result_df["patient_id"] = result_df["patientID"]
-            result_df.drop(columns=["patientID"], inplace=True)
-            # Convert patient_id to numeric if possible for proper sorting
-            try:
-                result_df["patient_id"] = pd.to_numeric(result_df["patient_id"])
-            except (ValueError, TypeError):
-                pass  # Keep as string if conversion fails
-        else:
-            result_df["patient_id"] = result_df.index
+        result_df = _assign_patient_id(pd.DataFrame(result), variable)
 
         # Handle subClass column name variations
         if "subClass" in result_df.columns:
@@ -263,17 +456,9 @@ def _process_multi_column_query(
 
     var1, var2 = variables
 
-    # Check for naughty words in both variables
+    # Verify both variables before either is substituted into the query template
     for variable in [var1, var2]:
-        ontology_part = variable.split(":")[0] + ":"
-        if any(
-            word in (variable, ontology_part, variable_property)
-            for word in NAUGHTY_WORD_LIST
-        ):
-            raise UserInputError(
-                "Potentially dangerous input detected in variable, ontology part, "
-                "or variable property."
-            )
+        _verify_input_safety(variable, variable_property)
 
     # Build query parameters for each variable
     query = query_template
@@ -289,7 +474,7 @@ def _process_multi_column_query(
                 ontology_prefix = query_params.get("ontology_prefix", ontology_part)
             else:
                 safe_log(
-                    "warning",
+                    "warn",
                     f"Could not get query params for {variable} from schema, "
                     "using fallback",
                 )
@@ -313,23 +498,7 @@ def _process_multi_column_query(
     if not result:
         return pd.DataFrame(columns=["patient_id", var1, var2])
 
-    result_df = pd.DataFrame(result)
-
-    # Drop patient URI columns
-    for col in ["p1", "p2"]:
-        if col in result_df.columns:
-            result_df.drop(columns=[col], inplace=True)
-
-    # Use patientID if available, otherwise use index
-    if "patientID" in result_df.columns:
-        result_df["patient_id"] = result_df["patientID"]
-        result_df.drop(columns=["patientID"], inplace=True)
-        try:
-            result_df["patient_id"] = pd.to_numeric(result_df["patient_id"])
-        except (ValueError, TypeError):
-            pass
-    else:
-        result_df["patient_id"] = result_df.index
+    result_df = _assign_patient_id(pd.DataFrame(result), f"{var1} and {var2}")
 
     # Process first variable: subClass + any_value -> var1
     if "subClass" in result_df.columns:
@@ -363,7 +532,7 @@ def _process_multi_column_query(
 
 
 def collect_sparql_data(
-    variables_to_describe: List[str],
+    variables_to_extract: List[str],
     query_type: str = "single_column",
     endpoint: str = "http://localhost:7200/repositories/userRepo",
     variable_property: Optional[str] = None,
@@ -375,7 +544,8 @@ def collect_sparql_data(
     Collect data from SPARQL endpoints for specified variables.
 
     Args:
-        variables_to_describe (List[str]): List of variable names to their properties.
+        variables_to_extract (List[str]): List of variables to extract; either the schema's
+                                          variable names or their class codes.
         query_type (str, optional): The type of query to execute. Supports 'single_column' and 'multi_column'.
                                     Defaults to 'single_column'.
         endpoint (str, optional): The SPARQL endpoint URL.
@@ -391,6 +561,8 @@ def collect_sparql_data(
         use_schema (bool, optional): Whether to use schema-based predicate path generation.
                                      Defaults to False for backward compatibility.
         schema_url (str, optional): Custom URL to fetch schema from. Only used if use_schema is True.
+                                    A URL specified in the environment variables will be prioritised,
+                                    as will a release tag specified through SCHEMA_TAG.
 
     Returns:
         pd.DataFrame: A combined DataFrame containing all retrieved data,
@@ -413,20 +585,30 @@ def collect_sparql_data(
             # Check if we should use remote schema
             use_remote = get_env_var("USE_REMOTE_SCHEMA", "false").lower() == "true"
             schema_url_env = get_env_var("SCHEMA_URL", schema_url)
+            schema_tag_env = get_env_var("SCHEMA_TAG", None)
 
             schema = load_schema(
-                use_remote=use_remote, schema_url=schema_url_env, local_fallback=True
+                use_remote=use_remote,
+                schema_url=schema_url_env,
+                schema_tag=schema_tag_env,
+                local_fallback=True,
+            )
+            safe_log(
+                "info",
+                f"Using AYA cancer schema version {get_schema_version(schema)}",
             )
         except Exception as e:
             safe_log("error", f"Failed to load schema: {e}")
-            raise AlgorithmError("error", f"Failed to load schema: {e}")
+            raise AlgorithmError(f"Failed to load schema: {e}")
 
     if query_type == "single_column":
-        query_template = _load_query_template("single_column")
+        query_template = _prepare_query_template(
+            _load_query_template("single_column"), schema
+        )
 
         intermediate_df = pd.DataFrame(columns=["patient_id", "sub_class", "value"])
 
-        for variable in variables_to_describe:
+        for variable in variables_to_extract:
             try:
                 result_df = _process_variable_query(
                     endpoint,
@@ -447,39 +629,43 @@ def collect_sparql_data(
                             how="outer",
                         )
             except Exception as e:
-                raise AlgorithmError("error", f"Error processing {variable}: {e}")
+                raise AlgorithmError(f"Error processing {variable}: {e}")
 
     elif query_type == "multi_column":
-        query_template = _load_query_template("multi_column")
+        query_template = _prepare_query_template(
+            _load_query_template("multi_column"), schema
+        )
 
         try:
             intermediate_df = _process_multi_column_query(
                 endpoint,
                 query_template,
-                variables_to_describe,
+                variables_to_extract,
                 variable_property,
                 schema,
                 use_schema,
             )
         except Exception as e:
-            raise AlgorithmError(
-                "error",
-                f"Error processing multi-column query: {e}",
-            )
+            raise AlgorithmError(f"Error processing multi-column query: {e}")
 
     else:
         raise UserInputError(f"Unknown query type: {query_type}.")
 
-    # Calculate the missing count using the specific notation
-    add_missing_data_info(intermediate_df, missing_data_notation)
-
     # Replace the missing value notation to prevent TypeErrors
     intermediate_df = intermediate_df.replace(missing_data_notation, pd.NA)
 
-    # Sort by patient_id to ensure consistent ordering
+    # Count the missing values once every notation of missing data is represented as
+    # such. Counting the dataset's own notation alone would leave the values that no
+    # record holds at all - the ones that the merge of the variables leaves empty -
+    # uncounted, which would make an absence of data an observation that is not
+    # actually observed.
+    add_missing_data_info(intermediate_df, pd.NA)
+
+    # Sort by patient_id to ensure consistent ordering; identifiers are text, so they
+    # are ordered naturally rather than lexicographically
     if not intermediate_df.empty and "patient_id" in intermediate_df.columns:
-        intermediate_df = intermediate_df.sort_values("patient_id").reset_index(
-            drop=True
-        )
+        intermediate_df = intermediate_df.sort_values(
+            "patient_id", key=lambda identifiers: identifiers.map(_natural_sort_key)
+        ).reset_index(drop=True)
 
     return intermediate_df

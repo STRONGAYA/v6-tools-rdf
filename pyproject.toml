@@ -29,6 +29,16 @@ dependencies = [
     "vantage6-strongaya-general @ git+https://github.com/STRONGAYA/v6-tools-general.git@v1.0.4"
 ]
 
+[project.optional-dependencies]
+test = [
+    "pytest",
+    "pytest-mock",
+    "hypothesis",
+    "faker",
+    # Used to execute the generated SPARQL queries against a synthetic graph
+    "rdflib"
+]
+
 [project.urls]
 "Homepage" = "https://github.com/STRONGAYA/v6-tools-rdf"
 "Bug Tracker" = "https://github.com/STRONGAYA/v6-tools-rdf/issues"

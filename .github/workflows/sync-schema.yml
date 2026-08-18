@@ -10,24 +10,54 @@ permissions:
   contents: write
   pull-requests: write
 
+env:
+  SCHEMA_REPOSITORY: STRONGAYA/AYA-cancer-semantic-map
+  SCHEMA_FILE_NAME: AYA_cancer_schema.jsonld
+
 jobs:
   sync-schema:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
-      - name: Download latest schema
+      - name: Determine the latest schema release
+        id: release
         run: |
-          curl -s https://raw.githubusercontent.com/STRONGAYA/AYA-cancer-semantic-map/refs/heads/main/AYA_cancer_schema.jsonld \
+          tag=$(curl -sSf -H 'Accept: application/vnd.github+json' \
+            "https://api.github.com/repos/${SCHEMA_REPOSITORY}/releases/latest" \
+            | jq -r '.tag_name')
+          if [ -z "$tag" ] || [ "$tag" = "null" ]; then
+            echo "Could not determine the latest release of ${SCHEMA_REPOSITORY}"
+            exit 1
+          fi
+          echo "Latest schema release is tagged ${tag}"
+          echo "tag=${tag}" >> $GITHUB_OUTPUT
+
+      - name: Download the released schema
+        run: |
+          curl -sSf \
+            "https://raw.githubusercontent.com/${SCHEMA_REPOSITORY}/refs/tags/${{ steps.release.outputs.tag }}/${SCHEMA_FILE_NAME}" \
             -o /tmp/new_schema.jsonld
+          # Verify that the release holds a schema of the expected structure
+          python -c "
+          import json, sys
+          schema = json.load(open('/tmp/new_schema.jsonld'))
+          variables = schema.get('schema', {}).get('variables', {})
+          if not isinstance(variables, dict) or not variables:
+              sys.exit('Downloaded schema does not contain any variables')
+          print(f\"Downloaded schema version {schema.get('version')} with {len(variables)} variables\")
+          "
 
       - name: Check for changes
         id: check_changes
         run: |
-          if ! cmp -s /tmp/new_schema.jsonld src/vantage6_strongaya_rdf/schemas/AYA_cancer_schema.jsonld; then
+          if ! cmp -s /tmp/new_schema.jsonld src/vantage6_strongaya_rdf/schemas/${SCHEMA_FILE_NAME}; then
             echo "changes=true" >> $GITHUB_OUTPUT
-            cp /tmp/new_schema.jsonld src/vantage6_strongaya_rdf/schemas/AYA_cancer_schema.jsonld
+            cp /tmp/new_schema.jsonld src/vantage6_strongaya_rdf/schemas/${SCHEMA_FILE_NAME}
+            # Record the release that the bundled schema originates from
+            sed -i "s/^BUNDLED_SCHEMA_TAG = \".*\"$/BUNDLED_SCHEMA_TAG = \"${{ steps.release.outputs.tag }}\"/" \
+              src/vantage6_strongaya_rdf/schema_loader.py
           else
             echo "changes=false" >> $GITHUB_OUTPUT
           fi
@@ -36,13 +66,25 @@ jobs:
         if: steps.check_changes.outputs.changes == 'true'
         uses: peter-evans/create-pull-request@v5
         with:
-          commit-message: 'chore: sync AYA cancer schema from upstream'
-          title: 'chore: Update AYA cancer schema'
+          commit-message: 'chore: sync AYA cancer schema from release ${{ steps.release.outputs.tag }}'
+          title: 'chore: Update AYA cancer schema to ${{ steps.release.outputs.tag }}'
           body: |
-            This PR updates the bundled AYA cancer schema to the latest version from upstream repository.
-            
-            **Source:** https://github.com/STRONGAYA/AYA-cancer-semantic-map/blob/main/AYA_cancer_schema.jsonld
-            
+            This PR updates the bundled AYA cancer schema to release
+            `${{ steps.release.outputs.tag }}` of the upstream repository.
+
+            **Source:** https://github.com/STRONGAYA/AYA-cancer-semantic-map/blob/${{ steps.release.outputs.tag }}/AYA_cancer_schema.jsonld
+
+            The release tag that is recorded in `schema_loader.py` is updated alongside the
+            schema itself, so that a node can log which schema version it has run against.
+
+            The predicate path of every variable is guarded by a snapshot, so the test suite
+            reports which paths this release changes. Review that report and, when the change
+            is intended, regenerate the snapshot with:
+
+            ```bash
+            UPDATE_PREDICATE_PATH_SNAPSHOT=1 pytest tests/unit/test_schema_contract.py
+            ```
+
             Please review the changes before merging.
           branch: sync-schema-${{ github.run_number }}
           delete-branch: true

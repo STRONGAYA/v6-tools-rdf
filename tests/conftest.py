@@ -926,6 +926,9 @@ def pytest_configure(config):
         "markers", "vantage6: Tests that require Vantage6 infrastructure"
     )
     config.addinivalue_line("markers", "docker: Tests that require Docker")
+    config.addinivalue_line(
+        "markers", "network: Tests that require access to the internet"
+    )
 
 
 def pytest_collection_modifyitems(config, items):
