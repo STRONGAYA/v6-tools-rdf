@@ -193,9 +193,9 @@ def rdf_store(flyover_repository, docker_client):
 
         # Check if service is already running
         if isinstance(compose_cmd, list):
-            ps_cmd = compose_cmd + ["ps", "rdf-store"]
+            ps_cmd = compose_cmd + ["ps", "rdf-store-graphdb"]
         else:
-            ps_cmd = [compose_cmd, "ps", "rdf-store"]
+            ps_cmd = [compose_cmd, "ps", "rdf-store-graphdb"]
 
         print(
             f"Checking if rdf-store service is running with command: {' '.join(ps_cmd)}"
@@ -218,9 +218,9 @@ def rdf_store(flyover_repository, docker_client):
 
             # Use the correct compose command format
             if isinstance(compose_cmd, list):
-                cmd = compose_cmd + ["up", "-d", "rdf-store"]
+                cmd = compose_cmd + ["up", "-d", "rdf-store-graphdb"]
             else:
-                cmd = [compose_cmd, "up", "-d", "rdf-store"]
+                cmd = [compose_cmd, "up", "-d", "rdf-store-graphdb"]
 
             print(f"Starting service with command: {' '.join(cmd)}")
             process = subprocess.run(
@@ -242,9 +242,9 @@ def rdf_store(flyover_repository, docker_client):
 
                 # Try to get more detailed information
                 if isinstance(compose_cmd, list):
-                    logs_cmd = compose_cmd + ["logs", "rdf-store"]
+                    logs_cmd = compose_cmd + ["logs", "rdf-store-graphdb"]
                 else:
-                    logs_cmd = [compose_cmd, "logs", "rdf-store"]
+                    logs_cmd = [compose_cmd, "logs", "rdf-store-graphdb"]
 
                 try:
                     logs_result = subprocess.run(
@@ -305,9 +305,9 @@ def rdf_store(flyover_repository, docker_client):
             print("Stopping GraphDB service...")
             # Use the correct compose command format
             if isinstance(compose_cmd, list):
-                cmd = compose_cmd + ["stop", "rdf-store"]
+                cmd = compose_cmd + ["stop", "rdf-store-graphdb"]
             else:
-                cmd = [compose_cmd, "stop", "rdf-store"]
+                cmd = [compose_cmd, "stop", "rdf-store-graphdb"]
 
             subprocess.run(
                 cmd,
