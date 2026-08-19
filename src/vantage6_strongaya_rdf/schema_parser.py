@@ -109,10 +109,10 @@ def get_intermediate_classes(schema: dict) -> Set[str]:
         Set of class codes that are used as intermediate class (e.g. {"ncit:C177377"})
     """
     return {
-        item.get("class")
+        cls
         for variable_definition in _get_variables(schema).values()
         for item in _get_reconstruction(variable_definition)
-        if item.get("placement") == PLACEMENT_AFTER and item.get("class")
+        if item.get("placement") == PLACEMENT_AFTER and (cls := item.get("class"))
     }
 
 
