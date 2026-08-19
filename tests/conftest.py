@@ -16,6 +16,32 @@ import requests
 from vantage6.client import UserClient as Client
 from pathlib import Path
 
+# Environment variables that indicate a continuous integration environment;
+# 'CI' is set by GitHub Actions and most other providers.
+CI_ENVIRONMENT_VARIABLES = ("CI", "REQUIRE_INTEGRATION_TESTS")
+
+
+def _running_in_ci():
+    """Determine whether the tests are run in a continuous integration environment."""
+    return any(
+        os.environ.get(variable, "").strip().lower() in ("1", "true", "yes")
+        for variable in CI_ENVIRONMENT_VARIABLES
+    )
+
+
+def _skip_or_fail(reason):
+    """Skip when run locally, but fail in a continuous integration environment.
+
+    Infrastructure that cannot be set up on a developer's machine - Docker or the
+    vantage6 CLI that is not installed, for instance - is a reason to skip the
+    integration tests. The same situation in continuous integration means that the
+    integration tests verify nothing whilst the run still reports success, which is
+    why it is an error there.
+    """
+    if _running_in_ci():
+        pytest.fail(reason, pytrace=False)
+    pytest.skip(reason)
+
 
 @pytest.fixture(scope="session")
 def docker_test_setup():
@@ -44,7 +70,7 @@ def docker_client():
 
         return client
     except docker.errors.DockerException:
-        pytest.skip("Docker not available")
+        _skip_or_fail("Docker not available")
 
 
 # ========== RDF-store setup fixtures using Flyover ==========
@@ -86,7 +112,7 @@ def flyover_repository():
 
     except subprocess.CalledProcessError as e:
         print(f"Failed to clone Flyover repository: {e}")
-        pytest.skip("Failed to clone Flyover repository. Make sure Git is available.")
+        _skip_or_fail("Failed to clone Flyover repository. Make sure Git is available.")
 
     finally:
         # Clean up temporary directory if we created one
@@ -146,7 +172,7 @@ def rdf_store(flyover_repository, docker_client):
     flyover_path = flyover_info["path"]
 
     if not flyover_path:
-        pytest.skip("Flyover path not available. Cannot start RDF-store.")
+        _skip_or_fail("Flyover path not available. Cannot start RDF-store.")
 
     print(f"Setting up RDF store using Flyover at: {flyover_path}")
 
@@ -154,7 +180,7 @@ def rdf_store(flyover_repository, docker_client):
     try:
         compose_cmd = _get_compose_command()
     except RuntimeError as e:
-        pytest.skip(str(e))
+        _skip_or_fail(str(e))
 
     # Start GraphDB service
     try:
@@ -168,7 +194,7 @@ def rdf_store(flyover_repository, docker_client):
         if not os.path.exists(compose_file):
             print(f"docker-compose.yml not found at: {compose_file}")
             print(f"Directory contents: {os.listdir(flyover_path)}")
-            pytest.skip(f"docker-compose.yml not found in {flyover_path}")
+            _skip_or_fail(f"docker-compose.yml not found in {flyover_path}")
 
         print(f"Found docker-compose.yml at: {compose_file}")
 
@@ -177,7 +203,7 @@ def rdf_store(flyover_repository, docker_client):
             docker_client.ping()
             print("Docker daemon is running")
         except Exception as e:
-            pytest.skip(f"Docker daemon not accessible: {e}")
+            _skip_or_fail(f"Docker daemon not accessible: {e}")
 
         # Check for port conflicts
         try:
@@ -258,7 +284,7 @@ def rdf_store(flyover_repository, docker_client):
                 except Exception as e:
                     print(f"Could not get service logs: {e}")
 
-                pytest.skip("Failed to start GraphDB with docker-compose")
+                _skip_or_fail("Failed to start GraphDB with docker-compose")
 
             print("GraphDB service started using docker-compose")
         else:
@@ -283,7 +309,7 @@ def rdf_store(flyover_repository, docker_client):
         }
 
     except subprocess.TimeoutExpired as e:
-        pytest.skip(f"Timeout during RDF-store setup: {e}")
+        _skip_or_fail(f"Timeout during RDF-store setup: {e}")
     except Exception as e:
         # Make sure we return to the original directory even if there's an error
         if "original_dir" in locals():
@@ -293,7 +319,7 @@ def rdf_store(flyover_repository, docker_client):
         import traceback
 
         print(f"Traceback: {traceback.format_exc()}")
-        pytest.skip(f"Failed to set up RDF-store: {e}")
+        _skip_or_fail(f"Failed to set up RDF-store: {e}")
 
     finally:
         # Clean up: stop GraphDB service
@@ -458,7 +484,7 @@ def algorithm_image(docker_client):
     mock_algorithm_path = Path(__file__).parent / "mock_algorithm" / "v6-rdf-mock"
 
     if not mock_algorithm_path.exists():
-        pytest.skip(f"Mock algorithm directory not found at {mock_algorithm_path}")
+        _skip_or_fail(f"Mock algorithm directory not found at {mock_algorithm_path}")
 
     # Use v6-rdf-mock as package name
     pkg_name = "v6-rdf-mock"
@@ -505,7 +531,7 @@ def algorithm_image(docker_client):
             )
 
             if build_result.returncode != 0:
-                pytest.skip(
+                _skip_or_fail(
                     f"Algorithm image build failed with exit code {build_result.returncode}:\n"
                     f"STDOUT: {build_result.stdout}\n"
                     f"STDERR: {build_result.stderr}"
@@ -527,7 +553,7 @@ def algorithm_image(docker_client):
 
             image_info = json.loads(inspect_result.stdout)
             if not image_info or not image_info[0].get("Id"):
-                pytest.skip(f"Built image {image_tag} has no valid ID")
+                _skip_or_fail(f"Built image {image_tag} has no valid ID")
 
             print(f"Successfully built algorithm image: {image_tag}")
             return {
@@ -538,7 +564,7 @@ def algorithm_image(docker_client):
             }
 
         except (subprocess.CalledProcessError, json.JSONDecodeError, KeyError) as e:
-            pytest.skip(f"Failed to inspect built image {image_tag}: {e}")
+            _skip_or_fail(f"Failed to inspect built image {image_tag}: {e}")
 
     except subprocess.CalledProcessError as e:
         error_msg = f"Algorithm build failed: {e}"
@@ -546,11 +572,11 @@ def algorithm_image(docker_client):
             error_msg += f"\nSTDOUT: {e.stdout}"
         if e.stderr:
             error_msg += f"\nSTDERR: {e.stderr}"
-        pytest.skip(error_msg)
+        _skip_or_fail(error_msg)
     except subprocess.TimeoutExpired:
-        pytest.skip("Timeout building algorithm image (300s)")
+        _skip_or_fail("Timeout building algorithm image (300s)")
     except Exception as e:
-        pytest.skip(f"Unexpected error building algorithm image: {e}")
+        _skip_or_fail(f"Unexpected error building algorithm image: {e}")
 
 
 @pytest.fixture(scope="session")
@@ -630,15 +656,15 @@ def vantage6_network_session(docker_client, extra_node_config_file, rdf_store):
             ["v6", "--help"], capture_output=True, text=True, timeout=10
         )
         if result.returncode != 0:
-            pytest.skip(
+            _skip_or_fail(
                 f"Vantage6 CLI not available (exit code {result.returncode}):\n"
                 f"STDOUT: {result.stdout}\n"
                 f"STDERR: {result.stderr}"
             )
     except subprocess.TimeoutExpired:
-        pytest.skip("Vantage6 CLI check timed out (10s)")
+        _skip_or_fail("Vantage6 CLI check timed out (10s)")
     except FileNotFoundError:
-        pytest.skip(
+        _skip_or_fail(
             "Vantage6 CLI not found in PATH. Install with: pip install vantage6"
         )
 
@@ -706,7 +732,7 @@ def vantage6_network_session(docker_client, extra_node_config_file, rdf_store):
             error_msg = f"Failed to create demo network (exit code {create_result.returncode}):\n"
             error_msg += f"STDOUT: {create_result.stdout}\n"
             error_msg += f"STDERR: {create_result.stderr}"
-            pytest.skip(error_msg)
+            _skip_or_fail(error_msg)
 
         print("Starting demo network...")
         start_result = subprocess.run(
@@ -722,7 +748,7 @@ def vantage6_network_session(docker_client, extra_node_config_file, rdf_store):
             )
             error_msg += f"STDOUT: {start_result.stdout}\n"
             error_msg += f"STDERR: {start_result.stderr}"
-            pytest.skip(error_msg)
+            _skip_or_fail(error_msg)
 
         # Wait for the network to be ready
         print("Waiting for network to start...")
@@ -769,7 +795,7 @@ def vantage6_network_session(docker_client, extra_node_config_file, rdf_store):
         network_info["status"] = "running"
 
         if len(network_info["created_containers"]) < 4:
-            pytest.skip(
+            _skip_or_fail(
                 "Network setup incomplete: "
                 f"only {len(network_info['created_containers'])} containers created (expected ≥4)"
             )
@@ -796,10 +822,10 @@ def vantage6_network_session(docker_client, extra_node_config_file, rdf_store):
 
     except subprocess.TimeoutExpired as e:
         error_msg = f"Timeout setting up Vantage6 demo network: {e}"
-        pytest.skip(error_msg)
+        _skip_or_fail(error_msg)
     except Exception as e:
         error_msg = f"Unexpected error setting up Vantage6 demo network: {e}"
-        pytest.skip(error_msg)
+        _skip_or_fail(error_msg)
 
     finally:
         # Clean-up after all tests are done
@@ -824,7 +850,7 @@ def authentication(vantage6_network_session, docker_client, rdf_store) -> Client
     """
     # Ensure both the network and RDF store are running before attempting authentication
     if vantage6_network_session["status"] != "running":
-        pytest.skip("Vantage6 network is not running - cannot authenticate")
+        _skip_or_fail("Vantage6 network is not running - cannot authenticate")
 
     print(f"Authenticating with RDF store available at: {rdf_store['endpoint']}")
 
@@ -858,7 +884,9 @@ def authentication(vantage6_network_session, docker_client, rdf_store) -> Client
             break
         except Exception as e:
             if attempt == max_retries - 1:
-                pytest.skip(f"Failed to authenticate after {max_retries} attempts: {e}")
+                _skip_or_fail(
+                    f"Failed to authenticate after {max_retries} attempts: {e}"
+                )
             print(
                 f"Authentication attempt {attempt + 1} failed, retrying... Error: {e}"
             )
