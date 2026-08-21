@@ -17,6 +17,8 @@ def partial_rdf_mock(
     df: pd.DataFrame,
     variables_to_extract: Dict[str, CategoricalDetails | NonCategoricalDetails],
     query_type: str,
+    use_schema: bool = True,
+    variable_property: str | None = None,
 ) -> Any:
     """
     Decentral part of the algorithm
@@ -25,6 +27,9 @@ def partial_rdf_mock(
         df (pd.DataFrame): The input DataFrame containing at least the 'endpoint' column.
         variables_to_extract (Dict[str, str]): Dict of variables to extract from the RDF database.
         query_type (str): The type of SPARQL query to use (default is "single_column").
+        use_schema (bool): Whether to derive the queries from the JSON-LD schema.
+        variable_property (str | None): The property to identify variables with when the
+                                        queries are not derived from the schema.
 
     Returns:
         Any: The result of the SPARQL query in JSON format.
@@ -39,6 +44,8 @@ def partial_rdf_mock(
         list_of_variables,
         query_type=query_type,
         endpoint=df["endpoint"].iloc[0],
+        variable_property=variable_property,
+        use_schema=use_schema,
     )
 
     # Set the datatype to ensure conversions can be done properly
