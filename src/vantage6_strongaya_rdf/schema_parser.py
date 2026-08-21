@@ -444,3 +444,72 @@ def get_variable_query_params(variable_name: str, schema: dict) -> dict:
         "main_class": main_class,
         "ontology_prefix": ontology_prefix,
     }
+
+
+def get_variable_instance_path(variable_name: str, schema: dict) -> dict:
+    """
+    Determine how a variable is linked to the intermediate container (PROM, EHR or
+    HCPROM) that it was recorded within, if any.
+
+    Knowing this link allows two variables that were recorded within the same
+    container - a questionnaire answer and its own recording timestamp, for instance -
+    to be correlated on that shared container rather than on their patient alone, which
+    would otherwise pair an answer of one administration with the timestamp of another.
+
+    A variable is linked to such a container in one of two ways:
+    1. "after": the variable's own node additionally links onward to the container,
+       which is how a variable that is filled in as part of a container - a
+       questionnaire answer, for instance - declares which administration it belongs
+       to;
+    2. "before": the variable's own node is reached from within the container, which is
+       how a variable that describes the container itself - its recording timestamp,
+       for instance - is modelled as one of its entries.
+
+    Args:
+        variable_name: Name of the variable or class code
+        schema: The full schema dictionary
+
+    Returns:
+        An empty dictionary when the variable holds no such container, otherwise one of:
+        {"role": "after", "hop_predicate": "sio:SIO_000253", "instance_class": "ncit:C177377"}
+        {"role": "before", "path_to_instance": "sio:SIO_000255/.../sio:SIO_000253",
+         "hop_to_value": "sio:SIO_000233", "instance_class": "ncit:C177377"}
+    """
+    resolved_name = _resolve_variable_name(variable_name, schema)
+    if not resolved_name:
+        return {}
+
+    variable_definition = _get_variables(schema)[resolved_name]
+    intermediate_classes = get_intermediate_classes(schema)
+
+    for item in _get_reconstruction(variable_definition):
+        if (
+            item.get("placement") == PLACEMENT_AFTER
+            and item.get("class") in intermediate_classes
+            and item.get("predicate")
+        ):
+            return {
+                "role": "after",
+                "hop_predicate": item["predicate"],
+                "instance_class": item["class"],
+            }
+
+    for item in _get_reconstruction(variable_definition):
+        if (
+            item.get("@type") == CLASS_NODE_TYPE
+            and item.get("placement") != PLACEMENT_AFTER
+            and item.get("class") in intermediate_classes
+        ):
+            path_to_instance = _build_class_node_segments(
+                variable_definition, schema, frozenset()
+            )
+            hop_to_value = variable_definition.get("predicate")
+            if path_to_instance and hop_to_value:
+                return {
+                    "role": "before",
+                    "path_to_instance": "/".join(path_to_instance),
+                    "hop_to_value": hop_to_value,
+                    "instance_class": item["class"],
+                }
+
+    return {}

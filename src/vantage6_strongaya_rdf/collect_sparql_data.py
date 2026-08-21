@@ -34,6 +34,7 @@ from .schema_parser import (
     DEFAULT_IDENTIFIER_PREDICATE,
     get_identifier_query_params,
     get_schema_prefixes,
+    get_variable_instance_path,
     get_variable_query_params,
 )
 
@@ -438,6 +439,12 @@ def _process_multi_column_query(
     results with subClass/any_value for the first variable and subClass2/any_value2
     for the second.
 
+    When one variable is filled in as part of a PROM, EHR or HCPROM container and the
+    other is itself one of that container's own entries (see get_variable_instance_path),
+    the two are additionally correlated on the container that they share, so that an
+    attribute is not paired with the recording of a different administration of the
+    same patient.
+
     Args:
         endpoint (str): The SPARQL endpoint URL.
         query_template (str): The multi-column SPARQL query template.
@@ -462,6 +469,8 @@ def _process_multi_column_query(
 
     # Build query parameters for each variable
     query = query_template
+    predicate_paths = {}
+    instance_paths = {}
     for idx, variable in enumerate([var1, var2], start=1):
         suffix = f"_{idx}"
         ontology_part = variable.split(":")[0] + ":"
@@ -481,15 +490,61 @@ def _process_multi_column_query(
                 predicate_path = variable_property
                 main_class = variable
                 ontology_prefix = ontology_part
+            instance_paths[idx] = get_variable_instance_path(variable, schema)
         else:
             predicate_path = variable_property
             main_class = variable
             ontology_prefix = ontology_part
+            instance_paths[idx] = {}
 
-        query = (
-            query.replace(f"PLACEHOLDER_CLASS{suffix}", main_class)
-            .replace(f"PLACEHOLDER_ONTOLOGY{suffix}", ontology_prefix)
-            .replace(f"PLACEHOLDER_PREDICATE_PATH{suffix}", predicate_path)
+        predicate_paths[idx] = predicate_path
+
+        query = query.replace(f"PLACEHOLDER_CLASS{suffix}", main_class).replace(
+            f"PLACEHOLDER_ONTOLOGY{suffix}", ontology_prefix
+        )
+
+    # The two attributes are only correlated on the container that they were recorded
+    # within - a questionnaire answer and its own recording timestamp, for instance -
+    # when one of them is recorded as part of the container ("after") and the other as
+    # one of the container's own entries ("before"), and both refer to the very same
+    # container class. Correlating two "after" occurrences of the same container class
+    # is deliberately excluded, as that would require two ordinary attributes that
+    # merely reference the same kind of container (e.g. an EHR entry) to originate from
+    # that exact same entry, which is not the intent of this correlation.
+    roles = {idx: info.get("role") for idx, info in instance_paths.items()}
+    correlate_on_instance = (
+        roles[1]
+        and roles[2]
+        and not (roles[1] == "after" and roles[2] == "after")
+        and instance_paths[1].get("instance_class")
+        == instance_paths[2].get("instance_class")
+    )
+    if not correlate_on_instance:
+        instance_paths = {1: {}, 2: {}}
+
+    for idx in (1, 2):
+        suffix = f"_{idx}"
+        attr_variable = "attr" if idx == 1 else "attr2"
+        instance_info = instance_paths[idx]
+
+        if instance_info.get("role") == "before":
+            fetch_block = (
+                f"?p{idx} {instance_info['path_to_instance']} ?instance{idx} .\n"
+                f"  ?instance{idx} {instance_info['hop_to_value']} ?{attr_variable} ."
+            )
+            instance_block = ""
+        elif instance_info.get("role") == "after":
+            fetch_block = f"?p{idx} {predicate_paths[idx]} ?{attr_variable} ."
+            instance_block = (
+                f"OPTIONAL {{ ?{attr_variable} {instance_info['hop_predicate']} "
+                f"?instance{idx} . }}"
+            )
+        else:
+            fetch_block = f"?p{idx} {predicate_paths[idx]} ?{attr_variable} ."
+            instance_block = ""
+
+        query = query.replace(f"PLACEHOLDER_FETCH_BLOCK{suffix}", fetch_block).replace(
+            f"PLACEHOLDER_INSTANCE_BLOCK{suffix}", instance_block
         )
 
     safe_log("info", f"Posting multi-column SPARQL query for {var1} and {var2}.")

@@ -11,7 +11,7 @@ SELECT
 WHERE {
 
   # 1) FETCH FIRST ATTRIBUTE
-  ?p1 PLACEHOLDER_PREDICATE_PATH_1 ?attr .
+  PLACEHOLDER_FETCH_BLOCK_1
   ?attr rdf:type PLACEHOLDER_CLASS_1 ;
         rdf:type ?mainClass ;
         dbo:has_cell ?subcell .
@@ -26,8 +26,10 @@ WHERE {
     FILTER(!sameTerm(?subClass, ?mainClass))
   }
 
+  PLACEHOLDER_INSTANCE_BLOCK_1
+
   # 2) FETCH SECOND ATTRIBUTE
-  ?p2 PLACEHOLDER_PREDICATE_PATH_2 ?attr2 .
+  PLACEHOLDER_FETCH_BLOCK_2
   ?attr2 rdf:type PLACEHOLDER_CLASS_2 ;
          rdf:type ?mainClass2 ;
          dbo:has_cell ?subcell2 .
@@ -41,6 +43,8 @@ WHERE {
     ?subClass2 rdfs:subClassOf ?mainClass2 .
     FILTER(!sameTerm(?subClass2, ?mainClass2))
   }
+
+  PLACEHOLDER_INSTANCE_BLOCK_2
 
   # 3) RESOLVE PATIENT IDENTITY (foreign key, flat table or record URI)
   # Both records are identified in the same manner, after which the two attributes are
@@ -76,5 +80,14 @@ WHERE {
   BIND(COALESCE(?referencedIdValue2, ?idValue2, STR(?p2)) AS ?patientID2)
 
   FILTER(STR(?patientID) = STR(?patientID2))
+
+  # 4) CORRELATE RECORDINGS THAT SHARE THE SAME CONTAINER (PROM, EHR or HCPROM)
+  # When either attribute is bound to the container it was recorded within - a
+  # questionnaire answer and its own recording timestamp, for instance - the two are
+  # only kept together when they share that same container, so that an answer of one
+  # administration is not paired with the timestamp of another. Neither, or only one,
+  # of the two attributes may hold such a container, in which case they remain paired
+  # by patient alone, as before.
+  FILTER(!BOUND(?instance1) || !BOUND(?instance2) || STR(?instance1) = STR(?instance2))
 }
 GROUP BY ?p1 ?p2 ?patientID ?subClass ?subClass2

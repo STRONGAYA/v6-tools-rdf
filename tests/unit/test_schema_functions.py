@@ -24,6 +24,7 @@ from vantage6_strongaya_rdf.schema_parser import (  # noqa: E402
     build_predicate_path,
     get_intermediate_classes,
     get_schema_prefixes,
+    get_variable_instance_path,
     get_variable_query_params,
     resolve_intermediate_class_path,
 )
@@ -400,6 +401,50 @@ class TestSchemaParser:
         ), f"dbo:has_column should not be in schema path: {path}"
         # Verify the sequence separator between predicates
         assert "/" in path, f"Expected sequence separator in path: {path}"
+
+    def test_get_variable_instance_path_before_role(self):
+        """Test that a variable recorded within a container reports a "before" role.
+
+        time_prom_recording is one of the PROM container's own entries, so its own
+        node is reached from within the container rather than linking onward to it.
+        """
+        info = get_variable_instance_path("time_prom_recording", self.schema)
+
+        assert info["role"] == "before"
+        assert info["instance_class"] == PROM_CLASS
+        assert info["hop_to_value"] == MEASUREMENT_PREDICATE
+        assert info["path_to_instance"].endswith(CONTAINER_PREDICATE)
+
+    def test_get_variable_instance_path_after_role(self):
+        """Test that a variable that links onward to a container reports an "after" role.
+
+        biological_sex is filled in on its own and additionally links onward to the
+        EHR container that it was recorded within.
+        """
+        info = get_variable_instance_path("biological_sex", self.schema)
+
+        assert info["role"] == "after"
+        assert info["instance_class"] == EHR_CLASS
+        assert info["hop_predicate"] == CONTAINER_PREDICATE
+
+    def test_get_variable_instance_path_by_class_code(self):
+        """Test that a variable can be looked up by its class code as well."""
+        info = get_variable_instance_path("ncit:C192402", self.schema)
+
+        assert info["role"] == "before"
+        assert info["instance_class"] == PROM_CLASS
+
+    def test_get_variable_instance_path_without_a_container(self):
+        """Test that a variable without a container holds no instance path.
+
+        The identifier is not recorded within any container, so it must not be
+        mistaken for one.
+        """
+        assert get_variable_instance_path("identifier", self.schema) == {}
+
+    def test_get_variable_instance_path_nonexistent(self):
+        """Test that a non-existent variable holds no instance path."""
+        assert get_variable_instance_path("nonexistent_variable", self.schema) == {}
 
     def test_get_schema_prefixes_returns_dict(self):
         """Test that get_schema_prefixes returns a dictionary."""

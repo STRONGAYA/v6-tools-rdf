@@ -248,7 +248,19 @@ single-column query yields the union of the patients of each variable.
 
 A record that holds several values for the same variable - repeated measures, for instance -
 is represented by one sampled value per patient, as both queries group their results by
-patient.
+patient. Returning every recording as its own row instead of sampling one is tracked as
+follow-up work; it is out of scope for this change so as to keep this pull request focused.
+
+#### Correlating Recordings Within the Same Container
+
+When one of the two variables is filled in as part of a PROM, EHR or HCPROM container - a
+questionnaire answer, for instance - and the other is itself one of that container's own
+entries - its recording timestamp, for instance - the multi-column query pairs the two on
+the container that they share, rather than on the patient alone. This keeps an answer from
+being paired with the timestamp of a different administration when a patient holds more
+than one. Two variables that merely link onward to the same *kind* of container (e.g. two
+ordinary attributes that both reference an EHR entry) are not required to share the very
+same entry, and remain paired by patient alone as before.
 
 ### Patient Identifiers
 

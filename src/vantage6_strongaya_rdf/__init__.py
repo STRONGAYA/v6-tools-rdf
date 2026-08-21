@@ -14,6 +14,7 @@ from .schema_parser import (
     get_identifier_query_params,
     get_intermediate_classes,
     get_schema_prefixes,
+    get_variable_instance_path,
     get_variable_query_params,
     resolve_intermediate_class_path,
 )
@@ -28,6 +29,7 @@ __all__ = [
     "get_identifier_query_params",
     "get_intermediate_classes",
     "get_schema_prefixes",
+    "get_variable_instance_path",
     "get_variable_query_params",
     "resolve_intermediate_class_path",
 ]

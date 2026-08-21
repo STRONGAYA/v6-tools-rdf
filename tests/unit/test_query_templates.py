@@ -24,6 +24,7 @@ from vantage6_strongaya_rdf.schema_parser import (  # noqa: E402
     DEFAULT_IDENTIFIER_PREDICATE,
     get_identifier_query_params,
     get_schema_prefixes,
+    get_variable_instance_path,
     get_variable_query_params,
 )
 
@@ -49,13 +50,53 @@ def complete_query(query_name: str, variables: list, schema: dict) -> str:
             .replace("PLACEHOLDER_PREDICATE_PATH", params["predicate_path"])
         )
 
+    predicate_paths = {}
+    instance_paths = {}
     for index, variable in enumerate(variables, start=1):
         params = get_variable_query_params(variable, schema)
-        query = (
-            query.replace(f"PLACEHOLDER_CLASS_{index}", params["main_class"])
-            .replace(f"PLACEHOLDER_ONTOLOGY_{index}", params["ontology_prefix"])
-            .replace(f"PLACEHOLDER_PREDICATE_PATH_{index}", params["predicate_path"])
+        predicate_paths[index] = params["predicate_path"]
+        instance_paths[index] = get_variable_instance_path(variable, schema)
+        query = query.replace(
+            f"PLACEHOLDER_CLASS_{index}", params["main_class"]
+        ).replace(f"PLACEHOLDER_ONTOLOGY_{index}", params["ontology_prefix"])
+
+    # Mirrors the correlation rule of _process_multi_column_query: only correlate on a
+    # shared container when the two roles are not both "after"
+    roles = {index: info.get("role") for index, info in instance_paths.items()}
+    correlate_on_instance = (
+        roles[1]
+        and roles[2]
+        and not (roles[1] == "after" and roles[2] == "after")
+        and instance_paths[1].get("instance_class")
+        == instance_paths[2].get("instance_class")
+    )
+    if not correlate_on_instance:
+        instance_paths = {1: {}, 2: {}}
+
+    for index in (1, 2):
+        attr_variable = "attr" if index == 1 else "attr2"
+        info = instance_paths[index]
+
+        if info.get("role") == "before":
+            fetch_block = (
+                f"?p{index} {info['path_to_instance']} ?instance{index} .\n"
+                f"  ?instance{index} {info['hop_to_value']} ?{attr_variable} ."
+            )
+            instance_block = ""
+        elif info.get("role") == "after":
+            fetch_block = f"?p{index} {predicate_paths[index]} ?{attr_variable} ."
+            instance_block = (
+                f"OPTIONAL {{ ?{attr_variable} {info['hop_predicate']} "
+                f"?instance{index} . }}"
+            )
+        else:
+            fetch_block = f"?p{index} {predicate_paths[index]} ?{attr_variable} ."
+            instance_block = ""
+
+        query = query.replace(f"PLACEHOLDER_FETCH_BLOCK_{index}", fetch_block).replace(
+            f"PLACEHOLDER_INSTANCE_BLOCK_{index}", instance_block
         )
+
     return query
 
 

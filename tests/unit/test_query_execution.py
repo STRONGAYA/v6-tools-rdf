@@ -44,6 +44,7 @@ rdflib = pytest.importorskip(
 BIOLOGICAL_SEX = "ncit:C28421"
 AGE_AT_INITIAL_DIAGNOSIS = "ncit:C156420"
 TIME_PROM_RECORDING = "ncit:C192402"
+GENDER = "ncit:C158277"
 MALE = "http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C20197"
 FEMALE = "http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#C16576"
 
@@ -332,6 +333,78 @@ data:record_one_second_days a ncit:C192402 ;
 data:record_one_second_days_cell dbo:has_value "84" .
 """
 
+# ---------- Two PROM administrations, each with its own gender and its own time ----------
+# Used to verify that multi_column.rq pairs an attribute with the recording timestamp of
+# its own administration rather than an arbitrary one of the same patient.
+MULTI_COLUMN_CORRELATION_GRAPH = """
+@prefix dbo: <http://um-cds/ontologies/databaseontology/> .
+@prefix ncit: <http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#> .
+@prefix sio: <http://semanticscience.org/resource/> .
+@prefix data: <http://data.local/rdf/data/> .
+
+data:record_one sio:SIO_000673 data:record_one_id .
+data:record_one_id a ncit:C25364 ;
+                   dbo:has_cell data:record_one_id_cell .
+data:record_one_id_cell dbo:has_value "ID_0001" .
+
+# ---------- Administration A: gender "man" together with a recording of 42 days ----------
+data:record_one sio:SIO_000255 data:record_one_characteristics_a .
+data:record_one_characteristics_a sio:SIO_000008 data:record_one_gender_a .
+data:record_one_gender_a a ncit:C158277 ;
+                         dbo:has_cell data:record_one_gender_a_cell ;
+                         sio:SIO_000253 data:record_one_prom_a .
+data:record_one_gender_a_cell dbo:has_value "man" .
+data:record_one_prom_a a ncit:C177377 ;
+                       sio:SIO_000233 data:record_one_days_a .
+data:record_one_days_a a ncit:C192402 ;
+                       dbo:has_cell data:record_one_days_a_cell .
+data:record_one_days_a_cell dbo:has_value "42" .
+
+# ---------- Administration B: gender "woman" together with a recording of 84 days ----------
+data:record_one sio:SIO_000255 data:record_one_characteristics_b .
+data:record_one_characteristics_b sio:SIO_000008 data:record_one_gender_b .
+data:record_one_gender_b a ncit:C158277 ;
+                         dbo:has_cell data:record_one_gender_b_cell ;
+                         sio:SIO_000253 data:record_one_prom_b .
+data:record_one_gender_b_cell dbo:has_value "woman" .
+data:record_one_prom_b a ncit:C177377 ;
+                       sio:SIO_000233 data:record_one_days_b .
+data:record_one_days_b a ncit:C192402 ;
+                       dbo:has_cell data:record_one_days_b_cell .
+data:record_one_days_b_cell dbo:has_value "84" .
+"""
+
+# ---------- Two ordinary attributes, each attached to a different EHR entry ----------
+# Used to verify that two "after"-linked attributes are still paired by patient alone,
+# since neither of them is one of the container's own entries.
+DIFFERENT_EHR_ENTRIES_GRAPH = """
+@prefix dbo: <http://um-cds/ontologies/databaseontology/> .
+@prefix ncit: <http://ncicb.nci.nih.gov/xml/owl/EVS/Thesaurus.owl#> .
+@prefix sio: <http://semanticscience.org/resource/> .
+@prefix data: <http://data.local/rdf/data/> .
+
+data:record_one sio:SIO_000673 data:record_one_id .
+data:record_one_id a ncit:C25364 ;
+                   dbo:has_cell data:record_one_id_cell .
+data:record_one_id_cell dbo:has_value "ID_0001" .
+
+data:record_one sio:SIO_000255 data:record_one_characteristics .
+data:record_one_characteristics sio:SIO_000008 data:record_one_sex ,
+                                               data:record_one_age .
+
+data:record_one_sex a ncit:C28421 ;
+                    dbo:has_cell data:record_one_sex_cell ;
+                    sio:SIO_000253 data:record_one_ehr_a .
+data:record_one_sex_cell dbo:has_value "male" .
+data:record_one_ehr_a a ncit:C142529 .
+
+data:record_one_age a ncit:C156420 ;
+                    dbo:has_cell data:record_one_age_cell ;
+                    sio:SIO_000253 data:record_one_ehr_b .
+data:record_one_age_cell dbo:has_value "27" .
+data:record_one_ehr_b a ncit:C142529 .
+"""
+
 
 def _execute_against(graph_definition: str, monkeypatch) -> list:
     """
@@ -418,6 +491,18 @@ def null_value_endpoint(monkeypatch):
 def repeated_measure_endpoint(monkeypatch):
     """Execute the library's queries against the graph of repeated measures."""
     return _execute_against(REPEATED_MEASURE_GRAPH, monkeypatch)
+
+
+@pytest.fixture
+def multi_column_correlation_endpoint(monkeypatch):
+    """Execute the library's queries against the graph of two PROM administrations."""
+    return _execute_against(MULTI_COLUMN_CORRELATION_GRAPH, monkeypatch)
+
+
+@pytest.fixture
+def different_ehr_entries_endpoint(monkeypatch):
+    """Execute the library's queries against the graph of two separate EHR entries."""
+    return _execute_against(DIFFERENT_EHR_ENTRIES_GRAPH, monkeypatch)
 
 
 def collect(variables, query_type="single_column", **kwargs):
@@ -772,6 +857,46 @@ class TestRepeatedMeasures:
 
         assert list(result["patient_id"]) == ["ID_0001"]
         assert result[TIME_PROM_RECORDING].iloc[0] in {"42", "84"}
+
+
+class TestMultiColumnRepeatedMeasureCorrelation:
+    """Test that multi_column.rq correlates attributes recorded within the same container.
+
+    A questionnaire answer (or any other attribute that links onward to a PROM, EHR or
+    HCPROM container) and a variable that is itself one of that container's entries -
+    its recording timestamp, for instance - can now be paired on that shared container
+    rather than on the patient alone; this is still followed by the same SAMPLE/GROUP BY
+    aggregation as before, which is why only one administration survives, but the two
+    values that survive together now always belong to the very same administration.
+    """
+
+    def test_answer_is_paired_with_its_own_administration(
+        self, multi_column_correlation_endpoint
+    ):
+        """Test that the surviving pair never mixes two different administrations."""
+        result = collect([GENDER, TIME_PROM_RECORDING], query_type="multi_column")
+
+        assert list(result["patient_id"]) == ["ID_0001"]
+        pair = (result[GENDER].iloc[0], result[TIME_PROM_RECORDING].iloc[0])
+        assert pair in {("man", "42"), ("woman", "84")}
+
+    def test_two_after_linked_attributes_remain_paired_by_patient(
+        self, different_ehr_entries_endpoint
+    ):
+        """Test that two ordinary attributes are not required to share one EHR entry.
+
+        biological_sex and age_at_initial_diagnosis both link onward to an EHR entry of
+        their own; requiring those entries to be the very same one would incorrectly
+        drop patients whose attributes were recorded in different EHR entries, which is
+        why two "after"-linked attributes remain paired by patient alone.
+        """
+        result = collect(
+            [BIOLOGICAL_SEX, AGE_AT_INITIAL_DIAGNOSIS], query_type="multi_column"
+        )
+
+        assert list(result["patient_id"]) == ["ID_0001"]
+        assert result[BIOLOGICAL_SEX].iloc[0] == "male"
+        assert result[AGE_AT_INITIAL_DIAGNOSIS].iloc[0] == "27"
 
 
 if __name__ == "__main__":
