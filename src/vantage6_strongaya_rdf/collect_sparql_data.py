@@ -711,9 +711,12 @@ def collect_sparql_data(
         that a request may take, 60 by default), SPARQL_MAX_RETRIES (the number of
         times a failed request is retried, 3 by default) and SPARQL_MAX_CONCURRENCY
         (the number of 'single_column' queries that may be posted at once, 1 - i.e.
-        sequential - by default). A variable whose query keeps failing after these
-        retries are exhausted is skipped, and reported as such, so that it does not
-        keep the rest of a 'single_column' extraction from being collected.
+        sequential - by default). A variable whose query keeps failing for a
+        transient reason after these retries are exhausted is skipped, and reported
+        as such, so that it does not keep the rest of a 'single_column' extraction
+        from being collected; a variable that the endpoint rejects outright (an
+        invalid or malformed variable, for instance) is not transient, however, and
+        aborts the whole extraction immediately instead.
     """
     # Retrieve environment variables - prioritise them over defaults as local setups might e.g. have different endpoints
     endpoint = get_env_var("SPARQL_ENDPOINT", endpoint)
@@ -787,6 +790,15 @@ def collect_sparql_data(
         failed_variables = []
         for variable, result_df, error in _execute_concurrently(tasks, max_concurrency):
             if error is not None:
+                if isinstance(error, UserInputError):
+                    # A UserInputError reflects a problem with the request itself -
+                    # an invalid or malformed variable, for instance - rather than a
+                    # transient failure of the endpoint; retrying it would not have
+                    # changed the outcome, and neither would querying the remaining
+                    # variables, so the whole extraction aborts immediately instead
+                    # of silently skipping the variable that raised it
+                    raise UserInputError(f"Error processing {variable}: {error}")
+
                 failed_variables.append(variable)
                 safe_log(
                     "error",

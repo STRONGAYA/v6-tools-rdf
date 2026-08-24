@@ -318,9 +318,11 @@ to the SPARQL endpoint:
   exponentially increasing delay between attempts (default: `3`). A request is only retried
   when it could not reach the endpoint at all (a connection error or a timeout) or when the
   endpoint reported a server error (a 5xx status code); a client error (a 4xx status code) is
-  not retried, as the request itself is at fault. Once the retries are exhausted for a
-  variable of a `single_column` extraction, that variable is skipped and reported, rather than
-  aborting the rest of the extraction.
+  not retried, as the request itself is at fault, and is raised immediately instead. Once the
+  retries are exhausted for a variable of a `single_column` extraction, that variable is
+  skipped and reported, rather than aborting the rest of the extraction; a variable that the
+  endpoint rejects outright (a 4xx status code) is not a transient failure, however, and
+  aborts the whole extraction immediately instead of being skipped.
 - `SPARQL_MAX_CONCURRENCY`: The maximum number of `single_column` queries that may be posted
   at once (default: `1`, i.e. sequential). Raising this lets an algorithm collect several
   variables in parallel, which is worthwhile since posting a query is mostly a matter of

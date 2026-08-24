@@ -15,7 +15,7 @@ import requests  # type: ignore
 from io import StringIO
 from typing import Any, Dict, List, Union, Optional
 
-from vantage6.algorithm.tools.exceptions import AlgorithmError
+from vantage6.algorithm.tools.exceptions import AlgorithmError, UserInputError
 from vantage6.algorithm.tools.util import get_env_var
 from vantage6_strongaya_general.miscellaneous import safe_log
 
@@ -50,7 +50,8 @@ def post_sparql_query(
     number of times only, so that a persistently failing endpoint eventually surfaces
     as an error rather than being retried forever. A status code that reflects a
     problem with the request itself (a 4xx status code) is not retried, as retrying it
-    would not change the outcome.
+    would not change the outcome, and is raised as a UserInputError rather than an
+    AlgorithmError, so that a caller can tell the two kinds of failure apart.
 
     Args:
         endpoint (str): The URL of the endpoint to send the request to.
@@ -103,6 +104,15 @@ def post_sparql_query(
 
         if response.status_code == 200:
             break
+
+        if 400 <= response.status_code < 500:
+            # A client error reflects a problem with the request itself - a malformed
+            # query, for instance - which a second attempt would only repeat, so it is
+            # raised immediately rather than retried
+            raise UserInputError(
+                f"{label} failed with status code {response.status_code}: "
+                f"{response.text}"
+            )
 
         if response.status_code in RETRYABLE_STATUS_CODES and not is_last_attempt:
             _wait_before_retry(
