@@ -4,6 +4,7 @@ RDF/SPARQL Data Collection Functions
 
 File organisation:
 - Query template loading (_load_query_template)
+- Concurrent query execution (_execute_concurrently)
 - Query processing functionalities (_process_variable_query)
 - Data collection function (collect_sparql_data)
 ------------------------------------------------------------------------------
@@ -12,8 +13,10 @@ File organisation:
 import pandas as pd
 import re
 
+from concurrent.futures import ThreadPoolExecutor, as_completed
+from functools import partial
 from importlib import resources
-from typing import List, Optional, Tuple, Union
+from typing import Callable, Iterator, List, Optional, Sequence, Tuple, TypeVar, Union
 
 from vantage6.algorithm.tools.exceptions import (
     UserInputError,
@@ -235,6 +238,63 @@ def _load_query_template(query_name: str) -> str:
         return ""
 
 
+# The type of the result that a task yields; kept generic so that the helper below can
+# be reused by any strategy that processes a list of independent items, rather than
+# being tied to the DataFrame that the single-column query happens to produce
+_TaskResult = TypeVar("_TaskResult")
+
+
+def _execute_concurrently(
+    tasks: Sequence[Tuple[str, Callable[[], _TaskResult]]],
+    max_concurrency: int,
+) -> Iterator[Tuple[str, Optional[_TaskResult], Optional[Exception]]]:
+    """
+    Execute a list of labelled tasks, yielding each result as soon as it completes.
+
+    A concurrency of 1 (or less) runs the tasks one after another, in the order that
+    they were given, which keeps the default behaviour unchanged; a higher concurrency
+    runs them in a thread pool instead, which is worthwhile since each task merely
+    waits on an HTTP response rather than doing CPU-bound work. Any exception that a
+    task raises is caught and yielded alongside its label rather than propagated, so
+    that the failure of one task does not keep the results of the others from being
+    processed.
+
+    Args:
+        tasks (Sequence[Tuple[str, Callable[[], _TaskResult]]]): The tasks to execute,
+                                                                  each given as a label
+                                                                  (used for logging and
+                                                                  for reporting which
+                                                                  task a result or
+                                                                  failure belongs to)
+                                                                  and the callable that
+                                                                  performs the task
+                                                                  itself.
+        max_concurrency (int): The maximum number of tasks that may run at the same
+                               time.
+
+    Yields:
+        Tuple[str, Optional[_TaskResult], Optional[Exception]]: The label of the task,
+        its result (or None if it failed) and the exception that it raised (or None if
+        it succeeded).
+    """
+    if max_concurrency <= 1 or len(tasks) <= 1:
+        for label, task in tasks:
+            try:
+                yield label, task(), None
+            except Exception as e:
+                yield label, None, e
+        return
+
+    with ThreadPoolExecutor(max_workers=max_concurrency) as executor:
+        future_to_label = {executor.submit(task): label for label, task in tasks}
+        for future in as_completed(future_to_label):
+            label = future_to_label[future]
+            try:
+                yield label, future.result(), None
+            except Exception as e:
+                yield label, None, e
+
+
 def _build_prefix_declarations(schema: Optional[dict] = None) -> str:
     """
     Compose the PREFIX declarations of a SPARQL query.
@@ -410,9 +470,14 @@ def _process_variable_query(
         )
 
     safe_log("info", f"Posting SPARQL query for {variable}.")
-    result = post_sparql_query(endpoint=endpoint, query=query)
+    result = post_sparql_query(
+        endpoint=endpoint, query=query, log_label=f"Query for {variable}"
+    )
 
     if result:
+        safe_log(
+            "info", f"Query for {variable} completed and returned {len(result)} row(s)."
+        )
         result_df = _assign_patient_id(pd.DataFrame(result), variable)
 
         # Handle subClass column name variations
@@ -421,6 +486,7 @@ def _process_variable_query(
 
         return clean_null_values(extract_subclass_info(result_df, variable))
     else:
+        safe_log("info", f"Query for {variable} completed and returned no rows.")
         return pd.DataFrame(columns=["patient_id", variable])
 
 
@@ -548,10 +614,24 @@ def _process_multi_column_query(
         )
 
     safe_log("info", f"Posting multi-column SPARQL query for {var1} and {var2}.")
-    result = post_sparql_query(endpoint=endpoint, query=query)
+    result = post_sparql_query(
+        endpoint=endpoint,
+        query=query,
+        log_label=f"Multi-column query for {var1} and {var2}",
+    )
 
     if not result:
+        safe_log(
+            "info",
+            f"Multi-column query for {var1} and {var2} completed and returned no rows.",
+        )
         return pd.DataFrame(columns=["patient_id", var1, var2])
+
+    safe_log(
+        "info",
+        f"Multi-column query for {var1} and {var2} completed and returned "
+        f"{len(result)} row(s).",
+    )
 
     result_df = _assign_patient_id(pd.DataFrame(result), f"{var1} and {var2}")
 
@@ -602,7 +682,8 @@ def collect_sparql_data(
         variables_to_extract (List[str]): List of variables to extract; either the schema's
                                           variable names or their class codes.
         query_type (str, optional): The type of query to execute. Supports 'single_column' and 'multi_column'.
-                                    Defaults to 'single_column'.
+                                    Defaults to 'single_column'. The queries of a 'single_column'
+                                    extraction may be run concurrently; see SPARQL_MAX_CONCURRENCY below.
         endpoint (str, optional): The SPARQL endpoint URL.
                                   An endpoint specified in the environment variables will be prioritised.
                                   Defaults to "http://localhost:7200/repositories/userRepo".
@@ -622,6 +703,17 @@ def collect_sparql_data(
     Returns:
         pd.DataFrame: A combined DataFrame containing all retrieved data,
         with 'patient_id' as the index column and each variable as a separate column.
+
+    Note:
+        A handful of environment variables tune how a query is posted, rather than
+        being arguments of this function, as they concern the endpoint's reliability
+        rather than the data that is requested: SPARQL_TIMEOUT (the number of seconds
+        that a request may take, 60 by default), SPARQL_MAX_RETRIES (the number of
+        times a failed request is retried, 3 by default) and SPARQL_MAX_CONCURRENCY
+        (the number of 'single_column' queries that may be posted at once, 1 - i.e.
+        sequential - by default). A variable whose query keeps failing after these
+        retries are exhausted is skipped, and reported as such, so that it does not
+        keep the rest of a 'single_column' extraction from being collected.
     """
     # Retrieve environment variables - prioritise them over defaults as local setups might e.g. have different endpoints
     endpoint = get_env_var("SPARQL_ENDPOINT", endpoint)
@@ -663,28 +755,71 @@ def collect_sparql_data(
 
         intermediate_df = pd.DataFrame(columns=["patient_id", "sub_class", "value"])
 
-        for variable in variables_to_extract:
-            try:
-                result_df = _process_variable_query(
+        # A triplestore may accept several concurrent queries and simply queue up any
+        # that exceed its own capacity, which is why this defaults to sequential
+        # (1) rather than to a specific higher number; a node operator that knows the
+        # endpoint can take more can raise it through the environment
+        max_concurrency = get_env_var("SPARQL_MAX_CONCURRENCY", 1, as_type="int")
+        if max_concurrency < 1:
+            safe_log(
+                "warn",
+                f"SPARQL_MAX_CONCURRENCY of {max_concurrency} is not valid; using 1 "
+                f"(sequential) instead.",
+            )
+            max_concurrency = 1
+
+        tasks = [
+            (
+                variable,
+                partial(
+                    _process_variable_query,
                     endpoint,
                     query_template,
                     variable,
                     variable_property,
                     schema,
                     use_schema,
+                ),
+            )
+            for variable in variables_to_extract
+        ]
+
+        failed_variables = []
+        for variable, result_df, error in _execute_concurrently(tasks, max_concurrency):
+            if error is not None:
+                failed_variables.append(variable)
+                safe_log(
+                    "error",
+                    f"Query for {variable} failed and will be skipped, the rest of "
+                    f"the extraction continues without it: {error}",
                 )
-                if not result_df.empty:
-                    if intermediate_df.empty:
-                        intermediate_df = result_df
-                    else:
-                        intermediate_df = pd.merge(
-                            intermediate_df,
-                            result_df,
-                            on="patient_id",
-                            how="outer",
-                        )
-            except Exception as e:
-                raise AlgorithmError(f"Error processing {variable}: {e}")
+                continue
+
+            # A result is only ever None alongside an error, which is handled (and
+            # skipped) above, so a result reaching this point is never None
+            assert result_df is not None
+
+            # Merging every result into the accumulated DataFrame as soon as it
+            # arrives, rather than collecting every result first and merging them
+            # afterwards, keeps the peak memory usage bound to the accumulated
+            # result and the single largest query result, regardless of how many
+            # variables are extracted
+            if not result_df.empty:
+                if intermediate_df.empty:
+                    intermediate_df = result_df
+                else:
+                    intermediate_df = pd.merge(
+                        intermediate_df,
+                        result_df,
+                        on="patient_id",
+                        how="outer",
+                    )
+
+        if failed_variables and len(failed_variables) == len(variables_to_extract):
+            raise AlgorithmError(
+                f"Query failed for every requested variable: "
+                f"{', '.join(failed_variables)}."
+            )
 
     elif query_type == "multi_column":
         query_template = _prepare_query_template(

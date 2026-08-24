@@ -309,6 +309,24 @@ The following environment variables can be used to configure schema loading:
 - `VARIABLE_PROPERTY`: Override the default variable property predicate (only used when `use_schema=False` or as fallback)
 - `MISSING_DATA_NOTATION`: Custom notation for missing data
 
+The following environment variables configure the reliability of the requests that are posted
+to the SPARQL endpoint:
+
+- `SPARQL_TIMEOUT`: The number of seconds that a request may take before it is considered to
+  have failed (default: `60`)
+- `SPARQL_MAX_RETRIES`: The maximum number of times that a failed request is retried, with an
+  exponentially increasing delay between attempts (default: `3`). A request is only retried
+  when it could not reach the endpoint at all (a connection error or a timeout) or when the
+  endpoint reported a server error (a 5xx status code); a client error (a 4xx status code) is
+  not retried, as the request itself is at fault. Once the retries are exhausted for a
+  variable of a `single_column` extraction, that variable is skipped and reported, rather than
+  aborting the rest of the extraction.
+- `SPARQL_MAX_CONCURRENCY`: The maximum number of `single_column` queries that may be posted
+  at once (default: `1`, i.e. sequential). Raising this lets an algorithm collect several
+  variables in parallel, which is worthwhile since posting a query is mostly a matter of
+  waiting on the endpoint's response; an endpoint that itself limits the number of concurrent
+  connections is expected to simply queue up any requests beyond that limit rather than fail.
+
 The various functions are available through `pip install` for debugging and testing purposes.
 The library can be installed as follows:
 
@@ -333,6 +351,8 @@ tests/
 │   ├── test_query_execution.py           # Tests that execute the queries on a synthetic graph
 │   ├── test_fallback_query_execution.py  # Tests that execute the queries without the schema
 │   ├── test_schema_contract.py           # Tests every variable of the schema and its snapshot
+│   ├── test_sparql_client_retries.py     # Tests the timeout and retry behaviour of post_sparql_query
+│   ├── test_concurrent_collection.py     # Tests concurrent single-column queries and failure isolation
 │   └── snapshots/                        # Golden snapshot of every variable's predicate path
 ├── integration/                          # Integration tests
 │   └── test_vantage6_integration.py      # Data stratification workflows
