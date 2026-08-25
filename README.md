@@ -5,9 +5,9 @@
 <a href="https://www.python.org/downloads/"><img alt="Python 3.10+" src="https://img.shields.io/badge/python-3.10+-blue.svg"></a>
 <a href="https://opensource.org/licenses/Apache-2.0"><img alt="Licence: Apache 2.0" src="https://img.shields.io/badge/Licence-Apache%202.0-blue.svg"></a>
 <br>
-<a href="https://github.com/vantage6/vantage6/"><img alt="Vantage6 4.11, 4.12" src="https://img.shields.io/badge/vantage6- 4.11 | 4.12-blue.svg"></a>
+<a href="https://github.com/vantage6/vantage6/"><img alt="Vantage6 4.14, 4.15" src="https://img.shields.io/badge/vantage6- 4.14 | 4.15-blue.svg"></a>
 <a href="https://github.com/MaastrichtU-CDS/Flyover"><img alt="Flyover version 2.0+" src="https://img.shields.io/badge/Flyover%20Version-2.0+-purple"></a>
-<a href="https://strongaya.eu/wp-content/uploads/2025/07/algorithm_review_guidelines.pdf"><img alt="STRONG AYA Algorithm Guideline Conformity: v1.1.0 Approved" src="https://img.shields.io/badge/STRONG%20AYA%20Algorithm%20Guideline%20Conformity-v1.1.0%20approved-brightgreen">
+<a href="https://strongaya.eu/wp-content/uploads/2025/07/algorithm_review_guidelines.pdf"><img alt="STRONG AYA Algorithm Guideline Conformity: v1.1.1 Approved" src="https://img.shields.io/badge/STRONG%20AYA%20Algorithm%20Guideline%20Conformity-v1.1.1%20approved-brightgreen">
 <br>
 <a href="https://github.com/psf/black"><img alt="Code style: black" src="https://img.shields.io/badge/code%20style-black-000000.svg"></a>
 <a href="https://flake8.pycqa.org/"><img alt="Linting: flake8" src="https://img.shields.io/badge/linting-flake8-informational"></a>
@@ -58,13 +58,13 @@ algorithm.
 For the `requirements.txt` file, you can add the following line to the file:
 
 ```
-git+https://github.com/STRONGAYA/v6-tools-rdf.git@v1.1.0
+git+https://github.com/STRONGAYA/v6-tools-rdf.git@v1.1.1
 ```
 
 For the `setup.py` file, you can add the following line to the `install_requires` list:
 
 ```python
-        "vantage6-strongaya-rdf @ git+https://github.com/STRONGAYA/v6-tools-rdf.git@v1.1.0",
+        "vantage6-strongaya-rdf @ git+https://github.com/STRONGAYA/v6-tools-rdf.git@v1.1.1",
 ```
 
 The algorithm's `setup.py`, particularly the `install_requirements`, section file should then look something like this:
@@ -91,7 +91,7 @@ setup(
         'vantage6-algorithm-tools',
         'numpy',
         'pandas',
-        "vantage6-strongaya-rdf @ git+https://github.com/STRONGAYA/v6-tools-rdf.git@v1.1.0"
+        "vantage6-strongaya-rdf @ git+https://github.com/STRONGAYA/v6-tools-rdf.git@v1.1.1"
         # other dependencies
     ]
 )
@@ -309,6 +309,26 @@ The following environment variables can be used to configure schema loading:
 - `VARIABLE_PROPERTY`: Override the default variable property predicate (only used when `use_schema=False` or as fallback)
 - `MISSING_DATA_NOTATION`: Custom notation for missing data
 
+The following environment variables configure the reliability of the requests that are posted
+to the SPARQL endpoint:
+
+- `SPARQL_TIMEOUT`: The number of seconds that a request may take before it is considered to
+  have failed (default: `60`)
+- `SPARQL_MAX_RETRIES`: The maximum number of times that a failed request is retried, with an
+  exponentially increasing delay between attempts (default: `3`). A request is only retried
+  when it could not reach the endpoint at all (a connection error or a timeout) or when the
+  endpoint reported a server error (a 5xx status code); a client error (a 4xx status code) is
+  not retried, as the request itself is at fault, and is raised immediately instead. Once the
+  retries are exhausted for a variable of a `single_column` extraction, that variable is
+  skipped and reported, rather than aborting the rest of the extraction; a variable that the
+  endpoint rejects outright (a 4xx status code) is not a transient failure, however, and
+  aborts the whole extraction immediately instead of being skipped.
+- `SPARQL_MAX_CONCURRENCY`: The maximum number of `single_column` queries that may be posted
+  at once (default: `1`, i.e. sequential). Raising this lets an algorithm collect several
+  variables in parallel, which is worthwhile since posting a query is mostly a matter of
+  waiting on the endpoint's response; an endpoint that itself limits the number of concurrent
+  connections is expected to simply queue up any requests beyond that limit rather than fail.
+
 The various functions are available through `pip install` for debugging and testing purposes.
 The library can be installed as follows:
 
@@ -333,6 +353,8 @@ tests/
 │   ├── test_query_execution.py           # Tests that execute the queries on a synthetic graph
 │   ├── test_fallback_query_execution.py  # Tests that execute the queries without the schema
 │   ├── test_schema_contract.py           # Tests every variable of the schema and its snapshot
+│   ├── test_sparql_client_retries.py     # Tests the timeout and retry behaviour of post_sparql_query
+│   ├── test_concurrent_collection.py     # Tests concurrent single-column queries and failure isolation
 │   └── snapshots/                        # Golden snapshot of every variable's predicate path
 ├── integration/                          # Integration tests
 │   └── test_vantage6_integration.py      # Data stratification workflows

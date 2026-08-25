@@ -124,9 +124,12 @@ class TestSparqlClient:
         # This should handle gracefully and not crash
         query = "SELECT ?s ?p ?o WHERE { ?s ?p ?o . } LIMIT 1"
 
-        # Test with invalid endpoint should return None or raise appropriate exception
+        # Retries are turned off, as this test is about the failure itself rather
+        # than about the retry behaviour, which is covered separately
         try:
-            result = post_sparql_query("http://invalid-endpoint:9999/sparql", query)
+            result = post_sparql_query(
+                "http://invalid-endpoint:9999/sparql", query, max_retries=0
+            )
             # If it doesn't raise an exception, result should be None or empty
             assert result is None or result == []
         except Exception as e:
