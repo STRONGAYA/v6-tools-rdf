@@ -15,7 +15,11 @@ import requests  # type: ignore
 from io import StringIO
 from typing import Any, Dict, List, Union, Optional
 
-from vantage6.algorithm.tools.exceptions import AlgorithmError, UserInputError
+from vantage6.algorithm.tools.exceptions import (
+    AlgorithmError,
+    EnvironmentVariableError,
+    UserInputError,
+)
 from vantage6.algorithm.tools.util import get_env_var
 from vantage6_strongaya_general.miscellaneous import safe_log
 
@@ -78,11 +82,33 @@ def post_sparql_query(
     data = {request_type: query}
 
     if timeout is None:
-        timeout = get_env_var("SPARQL_TIMEOUT", DEFAULT_TIMEOUT, as_type="int")
+        try:
+            timeout = get_env_var("SPARQL_TIMEOUT", DEFAULT_TIMEOUT, as_type="int")
+        except EnvironmentVariableError as e:
+            # A value that cannot be parsed as an integer (e.g. "one") is a
+            # misconfiguration rather than a problem with the request being made, so
+            # it falls back to the default instead of aborting the request over a
+            # node operator's typo
+            safe_log(
+                "warn",
+                f"SPARQL_TIMEOUT could not be parsed as an integer ({e}); using "
+                f"{DEFAULT_TIMEOUT} instead.",
+            )
+            timeout = DEFAULT_TIMEOUT
     if max_retries is None:
-        max_retries = get_env_var(
-            "SPARQL_MAX_RETRIES", DEFAULT_MAX_RETRIES, as_type="int"
-        )
+        try:
+            max_retries = get_env_var(
+                "SPARQL_MAX_RETRIES", DEFAULT_MAX_RETRIES, as_type="int"
+            )
+        except EnvironmentVariableError as e:
+            # As above, a value that cannot be parsed as an integer falls back to the
+            # default rather than aborting the request
+            safe_log(
+                "warn",
+                f"SPARQL_MAX_RETRIES could not be parsed as an integer ({e}); using "
+                f"{DEFAULT_MAX_RETRIES} instead.",
+            )
+            max_retries = DEFAULT_MAX_RETRIES
 
     label = log_label or "SPARQL request"
     response = None

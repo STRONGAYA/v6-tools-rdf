@@ -21,6 +21,7 @@ from typing import Callable, Iterator, List, Optional, Sequence, Tuple, TypeVar,
 from vantage6.algorithm.tools.exceptions import (
     UserInputError,
     AlgorithmError,
+    EnvironmentVariableError,
 )
 from vantage6.algorithm.tools.util import get_env_var
 from vantage6_strongaya_general.miscellaneous import safe_log
@@ -762,7 +763,20 @@ def collect_sparql_data(
         # that exceed its own capacity, which is why this defaults to sequential
         # (1) rather than to a specific higher number; a node operator that knows the
         # endpoint can take more can raise it through the environment
-        max_concurrency = get_env_var("SPARQL_MAX_CONCURRENCY", 1, as_type="int")
+        try:
+            max_concurrency = get_env_var("SPARQL_MAX_CONCURRENCY", 1, as_type="int")
+        except EnvironmentVariableError as e:
+            # A value that cannot be parsed as an integer (e.g. "one") is a
+            # misconfiguration rather than a problem with the data being requested,
+            # so it falls back to the sequential default instead of aborting the
+            # whole extraction over a node operator's typo
+            safe_log(
+                "warn",
+                f"SPARQL_MAX_CONCURRENCY could not be parsed as an integer ({e}); "
+                f"using 1 (sequential) instead.",
+            )
+            max_concurrency = 1
+
         if max_concurrency < 1:
             safe_log(
                 "warn",
